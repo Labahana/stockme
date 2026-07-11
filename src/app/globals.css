@@ -7,21 +7,31 @@
   --foreground: #171717;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   color: var(--foreground);
   background: var(--background);
   font-family: Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
+/* Embedded app: keep Polaris usable on phone browsers */
+@media (max-width: 768px) {
+  .Polaris-Page {
+    padding-inline: 12px !important;
   }
+
+  .Polaris-IndexTable {
+    font-size: 13px;
+  }
+
+  .Polaris-Modal-Dialog__Modal {
+    max-width: 100vw !important;
+  }
+}
+
+/* App Bridge nav: space links when default styles are missing */
+ui-nav-menu a,
+[data-app-bridge-nav] a {
+  margin-inline-end: 1rem;
 }
