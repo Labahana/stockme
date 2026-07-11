@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { AppLoading } from "@/components/app-loading";
 import { apiUrl, useHost, useShop } from "@/lib/hooks/use-shop";
 
 export function BillingGuard({ children }: { children: React.ReactNode }) {
@@ -11,42 +12,49 @@ export function BillingGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [checked, setChecked] = useState(false);
+  const onSettings = pathname.startsWith("/app/settings");
 
   useEffect(() => {
-    if (pathname.startsWith("/app/settings")) {
+    if (onSettings) {
       setChecked(true);
       return;
     }
 
-    setChecked(false);
+    if (!shop) return;
 
+    setChecked(false);
     let cancelled = false;
 
     fetch(apiUrl("/api/billing", shop, host))
-      .then((r) => r.json())
-      .then((data) => {
+      .then(async (r) => {
         if (cancelled) return;
+        const data = await r.json().catch(() => ({}));
         if (!data.hasActivePayment) {
           const params = new URLSearchParams();
-          if (shop) params.set("shop", shop);
+          params.set("shop", shop);
+          if (host) params.set("host", host);
           params.set("billing", "required");
           router.replace(`/app/settings?${params.toString()}`);
-        } else {
-          setChecked(true);
+          return;
         }
+        setChecked(true);
       })
       .catch(() => {
         if (cancelled) return;
-        // On failure, keep blocking — never grant access on error.
+        const params = new URLSearchParams();
+        params.set("shop", shop);
+        if (host) params.set("host", host);
+        params.set("billing", "required");
+        router.replace(`/app/settings?${params.toString()}`);
       });
 
     return () => {
       cancelled = true;
     };
-  }, [pathname, router, shop, host]);
+  }, [pathname, router, shop, host, onSettings]);
 
   useEffect(() => {
-    if (searchParams.get("billing") === "confirmed") {
+    if (searchParams.get("billing") === "confirmed" && shop) {
       let cancelled = false;
       fetch(apiUrl("/api/billing", shop, host))
         .then((r) => r.json())
@@ -64,8 +72,8 @@ export function BillingGuard({ children }: { children: React.ReactNode }) {
     }
   }, [searchParams, shop, host]);
 
-  if (!checked && !pathname.startsWith("/app/settings")) {
-    return null;
+  if (!checked && !onSettings) {
+    return <AppLoading message="Checking subscription…" />;
   }
 
   return <>{children}</>;

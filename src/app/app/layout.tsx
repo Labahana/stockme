@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { AppLoading } from "@/components/app-loading";
 import { PolarisProvider } from "@/components/providers/polaris-provider";
 import { AppBridgeNav } from "@/components/layout/app-nav";
 import { BillingGuard } from "@/components/billing-guard";
@@ -8,7 +9,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <PolarisProvider>
       <AppBridgeNav>
-        <Suspense fallback={null}>
+        <Suspense fallback={<AppLoading />}>
           <InstallGuard>
             <BillingGuard>{children}</BillingGuard>
           </InstallGuard>

@@ -147,7 +147,7 @@ export function SettingsPageClient() {
               <Button
                 variant="primary"
                 onClick={() => {
-                  const href = installUrl(shop);
+                  const href = installUrl(shop, host);
                   if (href) window.open(href, "_top");
                 }}
               >

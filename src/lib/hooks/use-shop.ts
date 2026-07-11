@@ -16,34 +16,46 @@ function readAppBridgeConfig(): { shop: string; host: string } {
   };
 }
 
-/** Shop domain from URL (?shop=) or App Bridge config (embedded admin). */
-export function useShop() {
+function useEmbeddedParam(name: "shop" | "host") {
   const searchParams = useSearchParams();
-  const fromUrl = searchParams.get("shop")?.trim() ?? "";
-  const [fromBridge, setFromBridge] = useState("");
+  const fromUrl = searchParams.get(name)?.trim() ?? "";
+  const [fromBridge, setFromBridge] = useState(() =>
+    name === "shop" ? readAppBridgeConfig().shop : readAppBridgeConfig().host,
+  );
 
   useEffect(() => {
     if (fromUrl) return;
-    const { shop } = readAppBridgeConfig();
-    if (shop) setFromBridge(shop);
-  }, [fromUrl]);
+
+    const sync = () => {
+      const value = readAppBridgeConfig()[name];
+      if (value) setFromBridge(value);
+      return value;
+    };
+
+    if (sync()) return;
+
+    let attempts = 0;
+    const timer = window.setInterval(() => {
+      attempts += 1;
+      if (sync() || attempts >= 50) {
+        window.clearInterval(timer);
+      }
+    }, 100);
+
+    return () => window.clearInterval(timer);
+  }, [fromUrl, name]);
 
   return fromUrl || fromBridge;
 }
 
+/** Shop domain from URL (?shop=) or App Bridge config (embedded admin). */
+export function useShop() {
+  return useEmbeddedParam("shop");
+}
+
 /** Host token from URL (?host=) or App Bridge config. */
 export function useHost() {
-  const searchParams = useSearchParams();
-  const fromUrl = searchParams.get("host")?.trim() ?? "";
-  const [fromBridge, setFromBridge] = useState("");
-
-  useEffect(() => {
-    if (fromUrl) return;
-    const { host } = readAppBridgeConfig();
-    if (host) setFromBridge(host);
-  }, [fromUrl]);
-
-  return fromUrl || fromBridge;
+  return useEmbeddedParam("host");
 }
 
 export function apiUrl(path: string, shop: string, host?: string | null) {
@@ -54,6 +66,9 @@ export function apiUrl(path: string, shop: string, host?: string | null) {
   return qs ? `${path}?${qs}` : path;
 }
 
-export function installUrl(shop: string) {
-  return shop ? `/api/auth?shop=${encodeURIComponent(shop)}` : "";
+export function installUrl(shop: string, host?: string | null) {
+  if (!shop) return "";
+  const params = new URLSearchParams({ shop });
+  if (host) params.set("host", host);
+  return `/api/auth?${params.toString()}`;
 }

@@ -2,7 +2,7 @@
 
 import { NavMenu } from "@shopify/app-bridge-react";
 import { ReactNode, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useHost, useShop } from "@/lib/hooks/use-shop";
 
 const NAV_ITEMS: { href: string; label: string; rel?: string }[] = [
   { href: "/app", label: "Dashboard", rel: "home" },
@@ -17,9 +17,8 @@ const NAV_ITEMS: { href: string; label: string; rel?: string }[] = [
 ];
 
 function NavLinks() {
-  const searchParams = useSearchParams();
-  const shop = searchParams.get("shop");
-  const host = searchParams.get("host");
+  const shop = useShop();
+  const host = useHost();
 
   const withParams = (href: string) => {
     const params = new URLSearchParams();

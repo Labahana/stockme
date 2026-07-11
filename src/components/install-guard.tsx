@@ -3,25 +3,29 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Banner, BlockStack, Button, Page } from "@shopify/polaris";
-import { apiUrl, useHost, useShop } from "@/lib/hooks/use-shop";
+import { AppLoading } from "@/components/app-loading";
+import { apiUrl, installUrl, useHost, useShop } from "@/lib/hooks/use-shop";
 
-type InstallState = "checking" | "installed" | "missing";
+type InstallState = "waiting" | "checking" | "installed" | "missing";
 
 export function InstallGuard({ children }: { children: React.ReactNode }) {
   const shop = useShop();
   const host = useHost();
   const searchParams = useSearchParams();
-  const [state, setState] = useState<InstallState>("checking");
+  const [state, setState] = useState<InstallState>("waiting");
 
   useEffect(() => {
     if (!shop) {
-      setState("missing");
-      return;
+      const timer = window.setTimeout(() => {
+        setState((current) => (current === "waiting" ? "missing" : current));
+      }, 3000);
+      return () => window.clearTimeout(timer);
     }
 
+    setState("checking");
     let cancelled = false;
-    fetch(apiUrl("/api/billing", shop, host), { skipBilling: "1" } as RequestInit)
-      .catch(() => fetch(apiUrl("/api/billing", shop, host)))
+
+    fetch(apiUrl("/api/billing", shop, host))
       .then(async (r) => {
         if (cancelled) return;
         if (r.status === 401) {
@@ -39,12 +43,12 @@ export function InstallGuard({ children }: { children: React.ReactNode }) {
     };
   }, [shop, host]);
 
-  if (state === "checking") {
-    return null;
+  if (!shop || state === "waiting" || state === "checking") {
+    return <AppLoading message={shop ? "Checking store connection…" : "Connecting to Shopify…"} />;
   }
 
-  if (state === "missing" && shop) {
-    const installUrl = `/api/auth?shop=${encodeURIComponent(shop)}${host ? `&host=${encodeURIComponent(host)}` : ""}`;
+  if (state === "missing") {
+    const authUrl = installUrl(shop, host);
     const billingRequired = searchParams.get("billing") === "required";
 
     return (
@@ -54,7 +58,12 @@ export function InstallGuard({ children }: { children: React.ReactNode }) {
             Stockme is not fully installed for {shop}. Complete OAuth once to connect your store
             before billing or sync will work.
           </Banner>
-          <Button url={installUrl} variant="primary">
+          <Button
+            variant="primary"
+            onClick={() => {
+              if (authUrl) window.open(authUrl, "_top");
+            }}
+          >
             Install / reconnect {shop}
           </Button>
           {billingRequired && (
