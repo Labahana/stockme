@@ -8,13 +8,17 @@ import {
   loadOfflineSession,
 } from "@/lib/shopify";
 import { syncStoreBilling } from "@/lib/billing/plans";
+import { createRawResponse, toNextResponse } from "@/lib/shopify/next-adapter";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
+  const rawResponse = createRawResponse();
+
   try {
     const callback = await shopify.auth.callback({
       rawRequest: request,
+      rawResponse,
       expiring: true,
     });
 
@@ -47,15 +51,24 @@ export async function GET(request: NextRequest) {
     const host = request.nextUrl.searchParams.get("host");
     const redirectUrl = host
       ? await shopify.auth.buildEmbeddedAppUrl(host)
-      : `${process.env.NEXT_PUBLIC_APP_URL}/app/settings?shop=${encodeURIComponent(callback.session.shop)}&billing=required`;
+      : `${process.env.NEXT_PUBLIC_APP_URL ?? "https://stocky-rho.vercel.app"}/app/settings?shop=${encodeURIComponent(callback.session.shop)}&billing=required`;
 
-    const response = NextResponse.redirect(redirectUrl);
+    const oauthResponse = toNextResponse(rawResponse);
+    const redirect = NextResponse.redirect(redirectUrl);
+
+    oauthResponse.headers.forEach((value, key) => {
+      if (key.toLowerCase() === "set-cookie") {
+        redirect.headers.append(key, value);
+      }
+    });
+
     for (const [key, value] of Object.entries(callback.headers)) {
       if (typeof value === "string") {
-        response.headers.set(key, value);
+        redirect.headers.set(key, value);
       }
     }
-    return response;
+
+    return redirect;
   } catch (error) {
     console.error("OAuth callback error:", error);
     return NextResponse.json(
