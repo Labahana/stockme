@@ -4,7 +4,7 @@ import { runFullCatalogSync } from "@/lib/sync/full-sync";
 import { applyWebhook } from "@/lib/sync/webhook-handlers";
 import { sendAllLowStockDigests } from "@/lib/email/low-stock";
 import { assertSkuLimit } from "@/lib/billing/limits";
-import { billingBypassEnabled, syncStoreBilling } from "@/lib/billing/plans";
+import { /* billingBypassEnabled, */ syncStoreBilling } from "@/lib/billing/plans";
 import { loadOfflineSession } from "@/lib/shopify";
 
 async function markSyncComplete(
@@ -116,19 +116,20 @@ export const runFullSync = inngest.createFunction(
       return data;
     });
 
-    if (store.billing_status !== "active" && !billingBypassEnabled()) {
-      await step.run("skip-unbilled", async () => {
-        await supabase
-          .from("sync_runs")
-          .insert({
-            shop_id: store.id,
-            sync_type: force ? "force" : "full",
-            status: "failed",
-            error_message: "Skipped: no active subscription",
-          });
-      });
-      return { ok: false, skipped: "no_active_subscription" };
-    }
+    // Billing enforcement disabled for initial dev/testing.
+    // if (store.billing_status !== "active" && !billingBypassEnabled()) {
+    //   await step.run("skip-unbilled", async () => {
+    //     await supabase
+    //       .from("sync_runs")
+    //       .insert({
+    //         shop_id: store.id,
+    //         sync_type: force ? "force" : "full",
+    //         status: "failed",
+    //         error_message: "Skipped: no active subscription",
+    //       });
+    //   });
+    //   return { ok: false, skipped: "no_active_subscription" };
+    // }
 
     const syncRun = await step.run("create-sync-run", async () => {
       const { data, error } = await supabase

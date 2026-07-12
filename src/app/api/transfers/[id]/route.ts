@@ -6,7 +6,7 @@ import {
   inventoryItemGid,
   locationGid,
 } from "@/lib/shopify/inventory";
-import { assertTransfersAllowed } from "@/lib/billing/limits";
+// import { assertTransfersAllowed } from "@/lib/billing/limits";
 
 export const dynamic = "force-dynamic";
 
@@ -49,10 +49,11 @@ export async function PATCH(
     const { action } = await request.json();
     const supabase = createAdminClient();
 
-    const transferBlocked = assertTransfersAllowed(ctx.store);
-    if (transferBlocked && (action === "ship" || action === "receive")) {
-      return NextResponse.json({ error: transferBlocked }, { status: 403 });
-    }
+    // Plan-limit enforcement disabled for initial dev/testing.
+    // const transferBlocked = assertTransfersAllowed(ctx.store);
+    // if (transferBlocked && (action === "ship" || action === "receive")) {
+    //   return NextResponse.json({ error: transferBlocked }, { status: 403 });
+    // }
 
     const { data: transfer, error } = await supabase
       .from("stock_transfers")

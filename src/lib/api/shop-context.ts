@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { loadOfflineSession, sanitizeShop } from "@/lib/shopify";
-import { billingBypassEnabled } from "@/lib/billing/plans";
+// import { billingBypassEnabled } from "@/lib/billing/plans";
 
 export type ShopContext = {
   shop: string;
@@ -15,8 +15,9 @@ export type ResolveShopOptions = {
 
 export async function resolveShopContext(
   request: NextRequest,
-  options?: ResolveShopOptions,
+  _options?: ResolveShopOptions,
 ): Promise<ShopContext | NextResponse> {
+  void _options;
   const shop = sanitizeShop(request.nextUrl.searchParams.get("shop"));
 
   if (!shop) {
@@ -40,15 +41,17 @@ export async function resolveShopContext(
     return NextResponse.json({ error: "Store record not found" }, { status: 404 });
   }
 
-  if (!options?.skipBilling && store.billing_status !== "active" && !billingBypassEnabled()) {
-    return NextResponse.json(
-      {
-        error: "An active Shopify subscription is required. Choose a plan in Settings.",
-        code: "BILLING_REQUIRED",
-      },
-      { status: 402 },
-    );
-  }
+  // Billing enforcement disabled for initial dev/testing. Uncomment when billing
+  // is configured (public app distribution + Shopify App Pricing / Billing API).
+  // if (!options?.skipBilling && store.billing_status !== "active" && !billingBypassEnabled()) {
+  //   return NextResponse.json(
+  //     {
+  //       error: "An active Shopify subscription is required. Choose a plan in Settings.",
+  //       code: "BILLING_REQUIRED",
+  //     },
+  //     { status: 402 },
+  //   );
+  // }
 
   return { shop, store };
 }

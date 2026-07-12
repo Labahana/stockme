@@ -7,10 +7,11 @@ import {
   inventoryItemGid,
   locationGid,
 } from "@/lib/shopify/inventory";
-import {
-  assertPartialInvoiceAllowed,
-  assertScanReceiveAllowed,
-} from "@/lib/billing/limits";
+// Plan-limit enforcement disabled for initial dev/testing.
+// import {
+//   assertPartialInvoiceAllowed,
+//   assertScanReceiveAllowed,
+// } from "@/lib/billing/limits";
 import { sendPurchaseOrderEmail } from "@/lib/email/po-send";
 import { purchaseOrderPdfBase64, type PoDetail } from "@/lib/export/po-pdf";
 
@@ -143,12 +144,13 @@ export async function PATCH(
         parsed.data.invoice?.invoicedAt ||
         parsed.data.invoice?.notes;
 
-      if (hasInvoiceFields) {
-        const blocked = assertPartialInvoiceAllowed(ctx.store);
-        if (blocked) {
-          return NextResponse.json({ error: blocked }, { status: 403 });
-        }
-      }
+      // Plan-limit enforcement disabled for initial dev/testing.
+      // if (hasInvoiceFields) {
+      //   const blocked = assertPartialInvoiceAllowed(ctx.store);
+      //   if (blocked) {
+      //     return NextResponse.json({ error: blocked }, { status: 403 });
+      //   }
+      // }
 
       const { data: po, error: poError } = await supabase
         .from("purchase_orders")
@@ -286,10 +288,11 @@ export async function PATCH(
     }
 
     if (body.action === "scan") {
-      const blocked = assertScanReceiveAllowed(ctx.store);
-      if (blocked) {
-        return NextResponse.json({ error: blocked }, { status: 403 });
-      }
+      // Plan-limit enforcement disabled for initial dev/testing.
+      // const blocked = assertScanReceiveAllowed(ctx.store);
+      // if (blocked) {
+      //   return NextResponse.json({ error: blocked }, { status: 403 });
+      // }
 
       const { data: po } = await supabase
         .from("purchase_orders")

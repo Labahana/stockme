@@ -7,7 +7,6 @@ import {
   fetchStoreVendors,
   fetchConsolidatedInventory,
 } from "@/lib/inventory/queries";
-import { filterLocationsForPlan, assertConsolidatedViewAllowed, getPlanLimits } from "@/lib/billing/limits";
 
 export const dynamic = "force-dynamic";
 
@@ -21,10 +20,11 @@ export async function GET(request: NextRequest) {
     const consolidated = searchParams.get("consolidated") === "true";
 
     if (consolidated) {
-      const blocked = assertConsolidatedViewAllowed(ctx.store);
-      if (blocked) {
-        return NextResponse.json({ error: blocked }, { status: 403 });
-      }
+      // Plan-limit enforcement disabled for initial dev/testing.
+      // const blocked = assertConsolidatedViewAllowed(ctx.store);
+      // if (blocked) {
+      //   return NextResponse.json({ error: blocked }, { status: 403 });
+      // }
       const result = await fetchConsolidatedInventory(ctx.store.id, {
         search: searchParams.get("search") ?? undefined,
         page: Number(searchParams.get("page") ?? "1"),
@@ -41,11 +41,10 @@ export async function GET(request: NextRequest) {
     }
 
     if (!locationId) {
-      const locations = await filterLocationsForPlan(
-        ctx.store,
-        await fetchLocations(ctx.store.id),
-      );
-      return NextResponse.json({
+    // Plan-limit enforcement disabled for initial dev/testing.
+    // const locations = await filterLocationsForPlan(ctx.store, await fetchLocations(ctx.store.id));
+    const locations = await fetchLocations(ctx.store.id);
+    return NextResponse.json({
         store: {
           shop: ctx.shop,
           lastSyncedAt: ctx.store.last_synced_at,
@@ -68,16 +67,17 @@ export async function GET(request: NextRequest) {
       limit: Number(searchParams.get("limit") ?? "50"),
     });
 
-    const limits = getPlanLimits(ctx.store.plan_tier);
-    if (limits.locations !== null) {
-      const allowed = await filterLocationsForPlan(ctx.store, await fetchLocations(ctx.store.id));
-      if (!allowed.some((l) => l.id === locationId)) {
-        return NextResponse.json(
-          { error: `Your ${limits.name} plan includes 1 location. Upgrade to manage inventory at more locations.` },
-          { status: 403 },
-        );
-      }
-    }
+    // Plan-limit enforcement disabled for initial dev/testing.
+    // const limits = getPlanLimits(ctx.store.plan_tier);
+    // if (limits.locations !== null) {
+    //   const allowed = await filterLocationsForPlan(ctx.store, await fetchLocations(ctx.store.id));
+    //   if (!allowed.some((l) => l.id === locationId)) {
+    //     return NextResponse.json(
+    //       { error: `Your ${limits.name} plan includes 1 location. Upgrade to manage inventory at more locations.` },
+    //       { status: 403 },
+    //     );
+    //   }
+    // }
 
     return NextResponse.json({
       ...result,
