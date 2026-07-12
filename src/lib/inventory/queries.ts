@@ -29,7 +29,7 @@ export type InventoryRow = {
 
 export async function fetchInventoryList(params: InventoryListParams) {
   const supabase = createAdminClient();
-  const limit = Math.min(Math.max(params.limit ?? 50, 1), 100);
+  const limit = Math.min(Math.max(params.limit ?? 50, 1), 10_000);
   const page = Math.max(params.page ?? 1, 1);
   const offset = (page - 1) * limit;
 
@@ -145,7 +145,7 @@ export async function fetchConsolidatedInventory(
   params: { search?: string; page?: number; limit?: number },
 ) {
   const supabase = createAdminClient();
-  const limit = Math.min(Math.max(params.limit ?? 50, 1), 100);
+  const limit = Math.min(Math.max(params.limit ?? 50, 1), 10_000);
   const page = Math.max(params.page ?? 1, 1);
   const offset = (page - 1) * limit;
 

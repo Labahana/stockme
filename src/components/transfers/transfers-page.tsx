@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
-  Badge,
   Banner,
   BlockStack,
   Button,
@@ -17,6 +16,7 @@ import {
 } from "@shopify/polaris";
 import { apiUrl, useShop } from "@/lib/hooks/use-shop";
 import { usePlanFeatures } from "@/lib/hooks/use-plan";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { UpgradeBanner } from "@/components/upgrade-banner";
 
 type Transfer = {
@@ -184,7 +184,9 @@ export function TransfersPageClient() {
         selected={selectedResources.includes(t.id)}
       >
         <IndexTable.Cell>{t.transfer_number}</IndexTable.Cell>
-        <IndexTable.Cell><Badge>{t.status}</Badge></IndexTable.Cell>
+        <IndexTable.Cell>
+          <StatusBadge status={t.status} />
+        </IndexTable.Cell>
         <IndexTable.Cell>{from?.name} → {to?.name}</IndexTable.Cell>
         <IndexTable.Cell>
           {t.status === "draft" && <Button size="slim" disabled={!transfersAllowed} onClick={() => updateTransfer(t.id, "ship")}>Ship</Button>}

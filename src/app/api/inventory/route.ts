@@ -7,6 +7,7 @@ import {
   fetchStoreVendors,
   fetchConsolidatedInventory,
 } from "@/lib/inventory/queries";
+import { csvResponse, toCsv } from "@/lib/export/csv";
 
 export const dynamic = "force-dynamic";
 
@@ -18,18 +19,28 @@ export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl;
     const locationId = searchParams.get("locationId");
     const consolidated = searchParams.get("consolidated") === "true";
+    const exportCsv = searchParams.get("export") === "csv";
 
     if (consolidated) {
-      // Plan-limit enforcement disabled for initial dev/testing.
-      // const blocked = assertConsolidatedViewAllowed(ctx.store);
-      // if (blocked) {
-      //   return NextResponse.json({ error: blocked }, { status: 403 });
-      // }
       const result = await fetchConsolidatedInventory(ctx.store.id, {
         search: searchParams.get("search") ?? undefined,
         page: Number(searchParams.get("page") ?? "1"),
-        limit: Number(searchParams.get("limit") ?? "50"),
+        limit: exportCsv ? 10_000 : Number(searchParams.get("limit") ?? "50"),
       });
+      if (exportCsv) {
+        return csvResponse(
+          "stockme-inventory-consolidated.csv",
+          toCsv(
+            result.items.map((item) => ({
+              product: item.product_title,
+              variant: item.variant_title,
+              sku: item.sku ?? "",
+              barcode: item.barcode ?? "",
+              total_available: item.total_available,
+            })),
+          ),
+        );
+      }
       return NextResponse.json({
         ...result,
         store: {
@@ -41,10 +52,8 @@ export async function GET(request: NextRequest) {
     }
 
     if (!locationId) {
-    // Plan-limit enforcement disabled for initial dev/testing.
-    // const locations = await filterLocationsForPlan(ctx.store, await fetchLocations(ctx.store.id));
-    const locations = await fetchLocations(ctx.store.id);
-    return NextResponse.json({
+      const locations = await fetchLocations(ctx.store.id);
+      return NextResponse.json({
         store: {
           shop: ctx.shop,
           lastSyncedAt: ctx.store.last_synced_at,
@@ -64,20 +73,26 @@ export async function GET(request: NextRequest) {
       tag: searchParams.get("tag") ?? undefined,
       vendor: searchParams.get("vendor") ?? undefined,
       page: Number(searchParams.get("page") ?? "1"),
-      limit: Number(searchParams.get("limit") ?? "50"),
+      limit: exportCsv ? 10_000 : Number(searchParams.get("limit") ?? "50"),
     });
 
-    // Plan-limit enforcement disabled for initial dev/testing.
-    // const limits = getPlanLimits(ctx.store.plan_tier);
-    // if (limits.locations !== null) {
-    //   const allowed = await filterLocationsForPlan(ctx.store, await fetchLocations(ctx.store.id));
-    //   if (!allowed.some((l) => l.id === locationId)) {
-    //     return NextResponse.json(
-    //       { error: `Your ${limits.name} plan includes 1 location. Upgrade to manage inventory at more locations.` },
-    //       { status: 403 },
-    //     );
-    //   }
-    // }
+    if (exportCsv) {
+      return csvResponse(
+        "stockme-inventory.csv",
+        toCsv(
+          result.items.map((item) => ({
+            product: item.product_title,
+            variant: item.variant_title,
+            sku: item.sku ?? "",
+            barcode: item.barcode ?? "",
+            available: item.available,
+            min_stock: item.min_stock,
+            max_stock: item.max_stock ?? "",
+            vendor: item.vendor ?? "",
+          })),
+        ),
+      );
+    }
 
     return NextResponse.json({
       ...result,

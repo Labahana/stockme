@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
-  Badge,
   Banner,
   BlockStack,
   Button,
@@ -25,6 +24,7 @@ import { apiUrl, useShop } from "@/lib/hooks/use-shop";
 import { usePlanFeatures } from "@/lib/hooks/use-plan";
 import { UpgradeBanner } from "@/components/upgrade-banner";
 import { BarcodeScanner } from "@/components/barcode-scanner";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 
 type PO = {
   id: string;
@@ -279,9 +279,6 @@ export function PurchaseOrdersPageClient() {
     });
   };
 
-  const statusTone = (s: string) =>
-    s === "received" ? "success" : s === "partially_received" ? "warning" : "info";
-
   const m = method[0];
   const showDays = m === "last_x_days" || m === "same_period_last_year";
   const showRange = m === "custom_range";
@@ -304,7 +301,9 @@ export function PurchaseOrdersPageClient() {
         selected={selectedResources.includes(po.id)}
       >
         <IndexTable.Cell>{po.po_number}</IndexTable.Cell>
-        <IndexTable.Cell><Badge tone={statusTone(po.status)}>{po.status}</Badge></IndexTable.Cell>
+        <IndexTable.Cell>
+          <StatusBadge status={po.status} />
+        </IndexTable.Cell>
         <IndexTable.Cell>{supplier?.name ?? "—"}</IndexTable.Cell>
         <IndexTable.Cell>{location?.name ?? "—"}</IndexTable.Cell>
         <IndexTable.Cell>

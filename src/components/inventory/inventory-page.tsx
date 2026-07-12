@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
-  Badge,
   Banner,
   BlockStack,
   Box,
@@ -24,6 +23,8 @@ import { generateBarcodeValue } from "@/lib/barcodes/generate";
 import { renderBarcodeDataUrl } from "@/lib/barcodes/render";
 import { usePlanFeatures } from "@/lib/hooks/use-plan";
 import { UpgradeBanner } from "@/components/upgrade-banner";
+import { InlineEditCell } from "@/components/ui/InlineEditCell";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 
 type Location = {
   id: string;
@@ -78,12 +79,6 @@ const STOCK_STATUS_OPTIONS = [
   { label: "Out of stock", value: "out" },
   { label: "In stock", value: "ok" },
 ];
-
-function stockTone(item: InventoryItem): "success" | "warning" | "critical" {
-  if (item.available <= 0) return "critical";
-  if (item.min_stock > 0 && item.available < item.min_stock) return "warning";
-  return "success";
-}
 
 function formatSyncedAt(value: string | null) {
   if (!value) return "Never synced";
@@ -255,6 +250,45 @@ export function InventoryPageClient() {
     }
   };
 
+  const saveThreshold = async (
+    variantId: string,
+    field: "minStock" | "maxStock",
+    raw: string,
+  ) => {
+    const params = new URLSearchParams();
+    if (shop) params.set("shop", shop);
+    const body: Record<string, unknown> = {
+      variantIds: [variantId],
+      locationId,
+    };
+    if (field === "minStock") {
+      body.minStock = Math.max(0, Number(raw) || 0);
+    } else {
+      body.maxStock = raw.trim() === "" ? null : Math.max(0, Number(raw) || 0);
+    }
+    const res = await fetch(`/api/inventory/bulk?${params.toString()}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      setError("Could not save threshold");
+      return;
+    }
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.variant_id !== variantId) return item;
+        if (field === "minStock") {
+          return { ...item, min_stock: Math.max(0, Number(raw) || 0) };
+        }
+        return {
+          ...item,
+          max_stock: raw.trim() === "" ? null : Math.max(0, Number(raw) || 0),
+        };
+      }),
+    );
+  };
+
   const applyBulkThresholds = async () => {
     const params = new URLSearchParams();
     if (shop) params.set("shop", shop);
@@ -347,12 +381,34 @@ export function InventoryPageClient() {
       <IndexTable.Cell>{item.sku ?? "—"}</IndexTable.Cell>
       <IndexTable.Cell>{item.barcode ?? "—"}</IndexTable.Cell>
       <IndexTable.Cell>
-        <InlineStack gap="200" blockAlign="center">
-          <Badge tone={stockTone(item)}>{String(item.available)}</Badge>
-        </InlineStack>
+        <StatusBadge
+          status={
+            item.available <= 0
+              ? "out"
+              : item.min_stock > 0 && item.available < item.min_stock
+                ? "low"
+                : "ok"
+          }
+          label={String(item.available)}
+        />
       </IndexTable.Cell>
-      <IndexTable.Cell>{item.min_stock}</IndexTable.Cell>
-      <IndexTable.Cell>{item.max_stock ?? "—"}</IndexTable.Cell>
+      <IndexTable.Cell>
+        <InlineEditCell
+          value={item.min_stock}
+          type="number"
+          min={0}
+          onSave={(next) => saveThreshold(item.variant_id, "minStock", next)}
+        />
+      </IndexTable.Cell>
+      <IndexTable.Cell>
+        <InlineEditCell
+          value={item.max_stock}
+          type="number"
+          min={0}
+          placeholder="—"
+          onSave={(next) => saveThreshold(item.variant_id, "maxStock", next)}
+        />
+      </IndexTable.Cell>
       <IndexTable.Cell>{item.vendor ?? "—"}</IndexTable.Cell>
     </IndexTable.Row>
   ));
@@ -400,6 +456,16 @@ export function InventoryPageClient() {
         onAction: forceSync,
         loading: syncing,
       }}
+      secondaryActions={[
+        {
+          content: "Export CSV",
+          url:
+            locationId && shop
+              ? `/api/inventory?shop=${encodeURIComponent(shop)}&locationId=${locationId}&export=csv`
+              : undefined,
+          disabled: !locationId,
+        },
+      ]}
       subtitle={`Last synced: ${formatSyncedAt(meta?.store.lastSyncedAt ?? null)}`}
     >
       <BlockStack gap="400">

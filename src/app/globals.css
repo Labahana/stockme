@@ -3,16 +3,95 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* StockMe / Stocky design tokens */
+  --stockme-primary: #00a699;
+  --stockme-primary-hover: #008f82;
+  --stockme-primary-active: #007a6e;
+
+  --status-pending: #ffc453;
+  --status-partially-received: #ffea8a;
+  --status-received: #a5e3b9;
+  --status-cancelled: #fdc6cd;
+  --status-draft: #b4e1fa;
+
+  --page-bg: #f6f6f7;
+  --card-bg: #ffffff;
+  --table-header-bg: #f6f6f7;
+  --table-row-hover: #f6f6f7;
+
+  --text-primary: #202223;
+  --text-secondary: #6d7175;
+  --text-muted: #8c9196;
+
+  --space-100: 4px;
+  --space-200: 8px;
+  --space-300: 12px;
+  --space-400: 16px;
+  --table-cell-padding: 8px 12px;
+  --card-padding: 16px;
+
+  --background: var(--page-bg);
+  --foreground: var(--text-primary);
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "San Francisco", "Segoe UI", Roboto,
+    "Helvetica Neue", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Dense Stocky-style tables */
+.Polaris-IndexTable__TableCell,
+.Polaris-IndexTable__TableHeading {
+  padding: var(--table-cell-padding) !important;
+}
+
+.Polaris-IndexTable__TableRow:hover td {
+  background: var(--table-row-hover);
+}
+
+.stockme-inline-cell {
+  display: inline-flex;
+  min-width: 48px;
+  min-height: 28px;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+}
+
+.stockme-inline-cell--editable {
+  cursor: pointer;
+}
+
+.stockme-inline-cell--editable:hover {
+  border-color: #c9cccf;
+  background: #fff;
+}
+
+.stockme-inline-edit {
+  min-width: 64px;
+}
+
+.stockme-inline-input {
+  width: 72px;
+  padding: 4px 8px;
+  border: 1px solid var(--stockme-primary);
+  border-radius: 4px;
+  font: inherit;
+  color: var(--text-primary);
+  outline: none;
+}
+
+.stockme-inline-input:focus {
+  box-shadow: 0 0 0 1px var(--stockme-primary);
 }
 
 /* Embedded app: keep Polaris usable on phone browsers */
