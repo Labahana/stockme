@@ -50,15 +50,14 @@ export function toNextResponse(rawResponse: ReturnType<typeof createRawResponse>
     }
   }
 
-  const body = rawResponse.getBody();
-  const location = headers.get("location");
+  const status = rawResponse.statusCode;
+  const isRedirect = status >= 300 && status < 400 && headers.has("location");
 
-  if (location && rawResponse.statusCode >= 300 && rawResponse.statusCode < 400) {
-    return NextResponse.redirect(location, rawResponse.statusCode);
-  }
-
-  return new NextResponse(body || null, {
-    status: rawResponse.statusCode,
+  // Build the response ourselves (instead of NextResponse.redirect) so that
+  // every header set by Shopify — crucially the signed OAuth state cookie
+  // (Set-Cookie) — is preserved on redirects. Dropping it breaks the callback.
+  return new NextResponse(isRedirect ? null : rawResponse.getBody() || null, {
+    status,
     headers,
   });
 }

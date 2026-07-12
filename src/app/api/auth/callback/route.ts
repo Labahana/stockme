@@ -53,19 +53,14 @@ export async function GET(request: NextRequest) {
       ? await shopify.auth.buildEmbeddedAppUrl(host)
       : `${process.env.NEXT_PUBLIC_APP_URL ?? "https://stocky-rho.vercel.app"}/app/settings?shop=${encodeURIComponent(callback.session.shop)}&billing=required`;
 
+    // Shopify's node adapter writes any response cookies (e.g. clearing the
+    // OAuth state cookie) directly onto rawResponse, so capture them here.
     const oauthResponse = toNextResponse(rawResponse);
     const redirect = NextResponse.redirect(redirectUrl);
 
-    oauthResponse.headers.forEach((value, key) => {
-      if (key.toLowerCase() === "set-cookie") {
-        redirect.headers.append(key, value);
-      }
-    });
-
-    for (const [key, value] of Object.entries(callback.headers)) {
-      if (typeof value === "string") {
-        redirect.headers.set(key, value);
-      }
+    const setCookie = oauthResponse.headers.get("set-cookie");
+    if (setCookie) {
+      redirect.headers.set("set-cookie", setCookie);
     }
 
     return redirect;
