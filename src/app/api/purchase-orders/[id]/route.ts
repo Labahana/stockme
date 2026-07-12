@@ -86,6 +86,13 @@ export async function PATCH(
 
       if (fetchError || !fullPo) throw fetchError ?? new Error("PO not found");
 
+      if (fullPo.status !== "draft") {
+        return NextResponse.json(
+          { error: `Cannot send a PO with status "${fullPo.status}"` },
+          { status: 409 },
+        );
+      }
+
       const { data, error } = await supabase
         .from("purchase_orders")
         .update({ status: "sent", sent_at: new Date().toISOString() })
@@ -282,6 +289,19 @@ export async function PATCH(
       const blocked = assertScanReceiveAllowed(ctx.store);
       if (blocked) {
         return NextResponse.json({ error: blocked }, { status: 403 });
+      }
+
+      const { data: po } = await supabase
+        .from("purchase_orders")
+        .select("status")
+        .eq("id", params.id)
+        .eq("shop_id", ctx.store.id)
+        .maybeSingle();
+      if (!po || (po.status !== "sent" && po.status !== "partially_received")) {
+        return NextResponse.json(
+          { error: "Scan-to-receive is only available for sent or partially received POs" },
+          { status: 409 },
+        );
       }
 
       const barcode = body.barcode as string | undefined;

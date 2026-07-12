@@ -26,6 +26,7 @@ export function SettingsPageClient() {
 
   const [planTier, setPlanTier] = useState<PlanTier>("starter");
   const [hasActivePayment, setHasActivePayment] = useState(false);
+  const [billingBypassed, setBillingBypassed] = useState(false);
   const [needsInstall, setNeedsInstall] = useState(false);
   const [usage, setUsage] = useState<{ skuCount: number; locationCount: number } | null>(null);
   const [email, setEmail] = useState("");
@@ -48,6 +49,7 @@ export function SettingsPageClient() {
         .then((billing) => {
           setPlanTier(billing.planTier ?? "starter");
           setHasActivePayment(billing.hasActivePayment ?? false);
+          setBillingBypassed(Boolean(billing.billingBypassed));
           if (billing.usage) {
             setUsage({
               skuCount: billing.usage.skuCount,
@@ -93,6 +95,13 @@ export function SettingsPageClient() {
       }
       if (!res.ok) {
         setMessage(data.error ?? `Billing failed (${res.status})`);
+        return;
+      }
+      if (data.billingBypassed) {
+        setMessage("Custom app billing is bypassed in test mode. All features are unlocked.");
+        setHasActivePayment(true);
+        setBillingBypassed(true);
+        loadBilling();
         return;
       }
       if (data.confirmationUrl) {
@@ -157,9 +166,16 @@ export function SettingsPageClient() {
           </Banner>
         )}
 
-        {billingRequired && !hasActivePayment && !needsInstall && (
+        {billingRequired && !hasActivePayment && !needsInstall && !billingBypassed && (
           <Banner tone="warning">
             Choose a plan below to activate Stockme. Billing is handled securely through Shopify.
+          </Banner>
+        )}
+
+        {billingBypassed && (
+          <Banner tone="info">
+            Running on a Shopify custom/development app. Billing is bypassed in test mode — all
+            features are unlocked for testing.
           </Banner>
         )}
 

@@ -91,7 +91,7 @@ async function consumeOAuthState(shop: string, state: string) {
   if (error) throw error;
   if (!data) return false;
   if (data.shop !== shop || data.state !== state) return false;
-  if (data.expires && new Date(data.expires).getTime() < Date.now()) {
+  if (!data.expires || new Date(data.expires).getTime() < Date.now()) {
     await supabase.from("shopify_sessions").delete().eq("id", id);
     return false;
   }

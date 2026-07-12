@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 const updateSchema = z.object({
   name: z.string().min(1).optional(),
   contact_name: z.string().optional(),
-  email: z.string().optional(),
+  email: z.string().email().optional().or(z.literal("")),
   phone: z.string().optional(),
   address: z.string().optional(),
   lead_time_days: z.number().int().min(0).optional(),

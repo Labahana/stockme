@@ -17,7 +17,12 @@ export async function GET(request: NextRequest) {
     if (isNextResponse(ctx)) return ctx;
 
     const session = await loadOfflineSession(ctx.shop);
-    let billing = {
+    let billing: {
+      hasActivePayment: boolean;
+      planTier: import("@/lib/constants").PlanTier;
+      billingStatus: string;
+      billingBypassed?: boolean;
+    } = {
       hasActivePayment: ctx.store.billing_status === "active",
       planTier: ctx.store.plan_tier,
       billingStatus: ctx.store.billing_status,
@@ -31,6 +36,7 @@ export async function GET(request: NextRequest) {
       planTier: billing.planTier,
       billingStatus: billing.billingStatus,
       hasActivePayment: billing.hasActivePayment,
+      billingBypassed: billing.billingBypassed ?? false,
       provider: "shopify",
       plans: PLAN_TIERS,
       usage: {
@@ -68,9 +74,20 @@ export async function POST(request: NextRequest) {
     });
     if (host) returnParams.set("host", host);
     const returnUrl = `${base}/app/settings?${returnParams.toString()}`;
-    const confirmation = await requestSubscription(session, plan, returnUrl);
+    const result = await requestSubscription(session, plan, returnUrl);
 
-    return NextResponse.json({ confirmationUrl: confirmation });
+    if (result.billingBypassed) {
+      return NextResponse.json({
+        success: true,
+        billingBypassed: true,
+        planTier: plan,
+        billingStatus: "active",
+        hasActivePayment: true,
+        message: "Custom app billing is bypassed in test mode.",
+      });
+    }
+
+    return NextResponse.json({ confirmationUrl: result.confirmationUrl });
   } catch (e) {
     console.error(e);
     return NextResponse.json({ error: "Billing request failed" }, { status: 500 });

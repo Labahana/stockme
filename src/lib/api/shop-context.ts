@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { loadOfflineSession, sanitizeShop } from "@/lib/shopify";
+import { billingBypassEnabled } from "@/lib/billing/plans";
 
 export type ShopContext = {
   shop: string;
@@ -39,7 +40,7 @@ export async function resolveShopContext(
     return NextResponse.json({ error: "Store record not found" }, { status: 404 });
   }
 
-  if (!options?.skipBilling && store.billing_status !== "active") {
+  if (!options?.skipBilling && store.billing_status !== "active" && !billingBypassEnabled()) {
     return NextResponse.json(
       {
         error: "An active Shopify subscription is required. Choose a plan in Settings.",

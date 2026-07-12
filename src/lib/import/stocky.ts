@@ -268,7 +268,8 @@ export async function importStockyPurchaseOrders(
       .maybeSingle();
 
     if (existingPo) {
-      result.updated++;
+      result.skipped++;
+      result.errors.push(`${group.poNumber}: PO already exists — skipped to avoid overwriting`);
       continue;
     }
 

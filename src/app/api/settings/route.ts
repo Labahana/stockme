@@ -3,6 +3,7 @@ import { z } from "zod";
 import { isNextResponse, resolveShopContext } from "@/lib/api/shop-context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendLowStockDigestForShop } from "@/lib/email/low-stock";
+import { billingBypassEnabled } from "@/lib/billing/plans";
 
 export const dynamic = "force-dynamic";
 
@@ -56,7 +57,7 @@ export async function PATCH(request: NextRequest) {
 
     let digestResult = null;
     if (parsed.data.sendDigestNow) {
-      if (ctx.store.billing_status !== "active") {
+      if (ctx.store.billing_status !== "active" && !billingBypassEnabled()) {
         return NextResponse.json(
           { error: "An active Shopify subscription is required." },
           { status: 402 },

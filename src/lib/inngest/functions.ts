@@ -4,7 +4,7 @@ import { runFullCatalogSync } from "@/lib/sync/full-sync";
 import { applyWebhook } from "@/lib/sync/webhook-handlers";
 import { sendAllLowStockDigests } from "@/lib/email/low-stock";
 import { assertSkuLimit } from "@/lib/billing/limits";
-import { syncStoreBilling } from "@/lib/billing/plans";
+import { billingBypassEnabled, syncStoreBilling } from "@/lib/billing/plans";
 import { loadOfflineSession } from "@/lib/shopify";
 
 async function markSyncComplete(
@@ -116,7 +116,7 @@ export const runFullSync = inngest.createFunction(
       return data;
     });
 
-    if (store.billing_status !== "active") {
+    if (store.billing_status !== "active" && !billingBypassEnabled()) {
       await step.run("skip-unbilled", async () => {
         await supabase
           .from("sync_runs")

@@ -28,7 +28,7 @@ export function InstallGuard({ children }: { children: React.ReactNode }) {
     fetch(apiUrl("/api/billing", shop, host))
       .then(async (r) => {
         if (cancelled) return;
-        if (r.status === 401) {
+        if (!r.ok) {
           setState("missing");
           return;
         }

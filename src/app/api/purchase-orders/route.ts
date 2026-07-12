@@ -121,6 +121,35 @@ export async function POST(request: NextRequest) {
       parsed.data;
 
     const supabase = createAdminClient();
+
+    const [{ data: supplier }, { data: location }, { data: variants }] = await Promise.all([
+      supabase.from("suppliers").select("id").eq("id", supplierId).eq("shop_id", ctx.store.id).maybeSingle(),
+      supabase.from("locations").select("id").eq("id", locationId).eq("shop_id", ctx.store.id).maybeSingle(),
+      supabase
+        .from("variants")
+        .select("id")
+        .eq("shop_id", ctx.store.id)
+        .in(
+          "id",
+          lines.map((l) => l.variantId),
+        ),
+    ]);
+
+    if (!supplier) {
+      return NextResponse.json({ error: "Supplier does not belong to this store" }, { status: 403 });
+    }
+    if (!location) {
+      return NextResponse.json({ error: "Location does not belong to this store" }, { status: 403 });
+    }
+    const validVariantIds = new Set((variants ?? []).map((v) => v.id));
+    const unknownVariants = lines.filter((l) => !validVariantIds.has(l.variantId));
+    if (unknownVariants.length > 0) {
+      return NextResponse.json(
+        { error: `${unknownVariants.length} line variant(s) do not belong to this store` },
+        { status: 403 },
+      );
+    }
+
     const poNumber = await nextPoNumber(ctx.store.id);
 
     const { data: po, error: poError } = await supabase

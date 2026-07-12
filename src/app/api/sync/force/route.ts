@@ -3,6 +3,7 @@ import { inngest } from "@/lib/inngest/client";
 import { loadOfflineSession, sanitizeShop } from "@/lib/shopify";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { assertSkuLimit } from "@/lib/billing/limits";
+import { billingBypassEnabled } from "@/lib/billing/plans";
 
 export async function POST(request: NextRequest) {
   const shop = sanitizeShop(request.nextUrl.searchParams.get("shop"));
@@ -26,7 +27,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Store not found" }, { status: 404 });
   }
 
-  if (store.billing_status !== "active") {
+  if (store.billing_status !== "active" && !billingBypassEnabled()) {
     return NextResponse.json(
       {
         error: "An active Shopify subscription is required. Choose a plan in Settings.",
