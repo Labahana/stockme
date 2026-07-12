@@ -1,35 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { sanitizeShop, shopify } from "@/lib/shopify";
+import { beginOfflineOAuth } from "@/lib/shopify/oauth";
 
 export const dynamic = "force-dynamic";
 
-async function beginAuth(request: NextRequest, shop: string) {
-  // web-api adapter returns a Fetch Response with Location + Set-Cookie
-  const response = await shopify.auth.begin({
-    shop,
-    callbackPath: "/api/auth/callback",
-    isOnline: false,
-    rawRequest: request,
-  });
-
-  return new NextResponse(response.body, {
-    status: response.status,
-    headers: response.headers,
-  });
-}
-
 export async function GET(request: NextRequest) {
   try {
-    const shop = sanitizeShop(request.nextUrl.searchParams.get("shop"));
-
-    if (!shop) {
+    const shopParam = request.nextUrl.searchParams.get("shop");
+    if (!shopParam) {
       return NextResponse.json({ error: "Invalid shop parameter" }, { status: 400 });
     }
 
-    return await beginAuth(request, shop);
+    const { redirectUrl } = await beginOfflineOAuth(shopParam);
+    return NextResponse.redirect(redirectUrl);
   } catch (error) {
     console.error("OAuth begin error:", error);
-    return NextResponse.json({ error: "OAuth begin failed" }, { status: 500 });
+    const message = error instanceof Error ? error.message : "OAuth begin failed";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
