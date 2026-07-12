@@ -2,36 +2,61 @@
 
 import { Badge } from "@shopify/polaris";
 
+type Status =
+  | "draft"
+  | "pending"
+  | "sent"
+  | "partially_received"
+  | "received"
+  | "cancelled"
+  | "in_progress"
+  | "in_transit"
+  | "completed"
+  | "critical"
+  | "warning"
+  | "success"
+  | "low"
+  | "out"
+  | "ok"
+  | string;
+
 type Tone = "success" | "attention" | "warning" | "critical" | "info" | undefined;
 
-const STATUS_MAP: Record<string, { label: string; tone: Tone; icon: string }> = {
-  draft: { label: "Draft", tone: "info", icon: "○" },
-  pending: { label: "Pending", tone: "warning", icon: "◐" },
-  sent: { label: "Sent", tone: "attention", icon: "↗" },
-  partially_received: { label: "Partially received", tone: "warning", icon: "◑" },
-  received: { label: "Received", tone: "success", icon: "✓" },
-  cancelled: { label: "Cancelled", tone: "critical", icon: "✕" },
-  in_transit: { label: "In transit", tone: "attention", icon: "→" },
-  in_progress: { label: "In progress", tone: "attention", icon: "…" },
-  completed: { label: "Completed", tone: "success", icon: "✓" },
-  low: { label: "Low stock", tone: "warning", icon: "!" },
-  out: { label: "Out of stock", tone: "critical", icon: "!" },
-  ok: { label: "In stock", tone: "success", icon: "✓" },
+const STATUS_MAP: Record<string, { tone: Tone; label: string }> = {
+  draft: { tone: undefined, label: "Draft" },
+  pending: { tone: "warning", label: "Pending" },
+  sent: { tone: "attention", label: "Sent" },
+  partially_received: { tone: "attention", label: "Partially Received" },
+  received: { tone: "success", label: "Received" },
+  cancelled: { tone: "critical", label: "Cancelled" },
+  in_progress: { tone: "attention", label: "In Progress" },
+  in_transit: { tone: "attention", label: "In Transit" },
+  completed: { tone: "success", label: "Completed" },
+  critical: { tone: "critical", label: "Critical" },
+  warning: { tone: "warning", label: "Warning" },
+  success: { tone: "success", label: "Good" },
+  low: { tone: "warning", label: "Low stock" },
+  out: { tone: "critical", label: "Out of stock" },
+  ok: { tone: "success", label: "In stock" },
 };
 
-/** Status = color + text + icon (never color alone) — Stocky muscle memory. */
+/** Spec §15 — status = label + color (never color alone). */
 export function StatusBadge({
   status,
+  size = "small",
   label,
 }: {
-  status: string;
+  status: Status;
+  size?: "small" | "medium" | "large";
   label?: string;
 }) {
-  const key = status.toLowerCase().replace(/\s+/g, "_");
+  const key = String(status).toLowerCase().replace(/\s+/g, "_");
   const mapped = STATUS_MAP[key];
-  const display = label ?? mapped?.label ?? status.replace(/_/g, " ");
-  const tone = mapped?.tone;
-  const icon = mapped?.icon ?? "•";
-
-  return <Badge tone={tone}>{`${icon} ${display}`}</Badge>;
+  const display = label ?? mapped?.label ?? String(status).replace(/_/g, " ");
+  const badgeSize = size === "large" ? "medium" : size;
+  return (
+    <Badge tone={mapped?.tone} size={badgeSize}>
+      {display}
+    </Badge>
+  );
 }

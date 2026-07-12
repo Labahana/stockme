@@ -204,7 +204,7 @@ export function StocktakesPageClient() {
 
   return (
     <Page
-      title="Stocktakes"
+      title="Stock Takes"
       primaryAction={{ content: "New stocktake", onAction: () => setOpen(true) }}
       secondaryActions={[{ content: "Export CSV", url: apiUrl("/api/stocktakes?export=csv", shop) }]}
     >

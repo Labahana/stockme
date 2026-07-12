@@ -1,38 +1,33 @@
+/* StockMe design tokens — wireframes_complete_spec §1 */
+:root {
+  --p-surface: #f6f6f7;
+  --p-surface-default: #ffffff;
+  --p-text: #202223;
+  --p-text-subdued: #6d7175;
+  --p-border: #c9cccf;
+  --p-border-subdued: #e1e3e5;
+  --stockme-primary: #008060;
+  --stockme-primary-hover: #004c3f;
+  --stockme-primary-subdued: #e3f1df;
+  --p-critical: #d72c0d;
+  --p-warning: #b98900;
+  --p-success: #008060;
+  --p-highlight: #a5e3b9;
+  --p-space-1: 4px;
+  --p-space-2: 8px;
+  --p-space-3: 12px;
+  --p-space-4: 16px;
+  --p-space-5: 20px;
+  --p-space-6: 24px;
+  --p-space-8: 32px;
+
+  --background: var(--p-surface);
+  --foreground: var(--p-text);
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-:root {
-  /* StockMe / Stocky design tokens */
-  --stockme-primary: #00a699;
-  --stockme-primary-hover: #008f82;
-  --stockme-primary-active: #007a6e;
-
-  --status-pending: #ffc453;
-  --status-partially-received: #ffea8a;
-  --status-received: #a5e3b9;
-  --status-cancelled: #fdc6cd;
-  --status-draft: #b4e1fa;
-
-  --page-bg: #f6f6f7;
-  --card-bg: #ffffff;
-  --table-header-bg: #f6f6f7;
-  --table-row-hover: #f6f6f7;
-
-  --text-primary: #202223;
-  --text-secondary: #6d7175;
-  --text-muted: #8c9196;
-
-  --space-100: 4px;
-  --space-200: 8px;
-  --space-300: 12px;
-  --space-400: 16px;
-  --table-cell-padding: 8px 12px;
-  --card-padding: 16px;
-
-  --background: var(--page-bg);
-  --foreground: var(--text-primary);
-}
 
 body {
   color: var(--foreground);
@@ -43,74 +38,243 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Dense Stocky-style tables */
-.Polaris-IndexTable__TableCell,
-.Polaris-IndexTable__TableHeading {
-  padding: var(--table-cell-padding) !important;
+/* Active sidebar item — Stocky green */
+.stockme-nav-active {
+  border-left: 3px solid var(--stockme-primary) !important;
+  background: var(--stockme-primary-subdued) !important;
+  color: var(--stockme-primary) !important;
 }
 
-.Polaris-IndexTable__TableRow:hover td {
-  background: var(--table-row-hover);
+.stockme-app-shell {
+  display: flex;
+  min-height: calc(100vh - 0px);
+  background: var(--p-surface);
+}
+
+.stockme-sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  background: var(--p-surface-default);
+  border-right: 1px solid var(--p-border-subdued);
+  display: flex;
+  flex-direction: column;
+}
+
+.stockme-sidebar__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 16px 12px;
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--p-text);
+  border-bottom: 1px solid var(--p-border-subdued);
+}
+
+.stockme-sidebar__brand-mark {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--stockme-primary);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.stockme-sidebar__nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+.stockme-sidebar__section {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--p-border-subdued);
+}
+
+.stockme-sidebar__section:last-of-type {
+  border-bottom: none;
+}
+
+.stockme-sidebar__link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  margin: 0 8px;
+  border-radius: 6px;
+  border-left: 3px solid transparent;
+  color: var(--p-text);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.stockme-sidebar__link:hover {
+  background: var(--p-surface);
+}
+
+.stockme-sidebar__link.is-active {
+  border-left-color: var(--stockme-primary);
+  background: var(--stockme-primary-subdued);
+  color: var(--stockme-primary);
+}
+
+.stockme-sidebar__footer {
+  padding: 12px 16px 16px;
+  border-top: 1px solid var(--p-border-subdued);
+  font-size: 12px;
+  color: var(--p-text-subdued);
+}
+
+.stockme-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.stockme-main__content {
+  flex: 1;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: var(--p-space-5);
+}
+
+.stockme-mobile-bar {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--p-surface-default);
+  border-bottom: 1px solid var(--p-border-subdued);
+}
+
+.stockme-overlay {
+  display: none;
 }
 
 .stockme-inline-cell {
-  display: inline-flex;
-  min-width: 48px;
-  min-height: 28px;
-  align-items: center;
-  padding: 2px 6px;
+  cursor: pointer;
+  padding: 4px 8px;
   border-radius: 4px;
   border: 1px solid transparent;
   background: transparent;
-  color: var(--text-primary);
   font: inherit;
+  color: var(--p-text);
   text-align: left;
+  min-width: 48px;
 }
 
-.stockme-inline-cell--editable {
-  cursor: pointer;
-}
-
-.stockme-inline-cell--editable:hover {
-  border-color: #c9cccf;
-  background: #fff;
-}
-
-.stockme-inline-edit {
-  min-width: 64px;
+.stockme-inline-cell:hover {
+  background: var(--p-surface);
+  border-color: var(--p-border-subdued);
 }
 
 .stockme-inline-input {
-  width: 72px;
+  width: 88px;
   padding: 4px 8px;
-  border: 1px solid var(--stockme-primary);
+  border: 2px solid var(--stockme-primary);
   border-radius: 4px;
   font: inherit;
-  color: var(--text-primary);
-  outline: none;
+  font-variant-numeric: tabular-nums;
 }
 
-.stockme-inline-input:focus {
-  box-shadow: 0 0 0 1px var(--stockme-primary);
+.stockme-help-fab {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 40;
+  border: none;
+  border-radius: 999px;
+  background: var(--stockme-primary);
+  color: #fff;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
 }
 
-/* Embedded app: keep Polaris usable on phone browsers */
-@media (max-width: 768px) {
-  .Polaris-Page {
-    padding-inline: 12px !important;
+.stockme-help-fab:hover {
+  background: var(--stockme-primary-hover);
+}
+
+.Polaris-IndexTable__TableCell,
+.Polaris-IndexTable__TableHeading {
+  padding: 8px 12px !important;
+}
+
+.Polaris-IndexTable__TableRow:hover td {
+  background: var(--p-surface);
+}
+
+.Polaris-Button--primary {
+  --pc-button-bg: var(--stockme-primary);
+}
+
+@media (max-width: 1024px) {
+  .stockme-sidebar {
+    width: 72px;
   }
 
-  .Polaris-IndexTable {
-    font-size: 13px;
+  .stockme-sidebar__link span.label,
+  .stockme-sidebar__brand span.label,
+  .stockme-sidebar__footer {
+    display: none;
+  }
+
+  .stockme-sidebar__link {
+    justify-content: center;
+    padding: 10px;
+  }
+}
+
+@media (max-width: 768px) {
+  .stockme-app-shell {
+    flex-direction: column;
+  }
+
+  .stockme-mobile-bar {
+    display: flex;
+  }
+
+  .stockme-sidebar {
+    display: none;
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    z-index: 50;
+  }
+
+  .stockme-sidebar.is-open {
+    display: flex;
+  }
+
+  .stockme-sidebar__link span.label,
+  .stockme-sidebar__brand span.label,
+  .stockme-sidebar__footer {
+    display: block;
+  }
+
+  .stockme-sidebar__link {
+    justify-content: flex-start;
+    padding: 12px 16px;
+  }
+
+  .stockme-main__content {
+    padding: 12px;
+  }
+
+  .Polaris-Page {
+    padding-inline: 0 !important;
   }
 
   .Polaris-Modal-Dialog__Modal {
     max-width: 100vw !important;
   }
-}
-
-/* App Bridge nav: space links when default styles are missing */
-ui-nav-menu a,
-[data-app-bridge-nav] a {
-  margin-inline-end: 1rem;
 }

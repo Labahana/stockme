@@ -257,7 +257,7 @@ export function SuppliersPageClient() {
 
   return (
     <Page
-      title="Suppliers"
+      title="Vendors"
       primaryAction={{ content: "Add supplier", onAction: () => setOpen(true) }}
       secondaryActions={[
         {

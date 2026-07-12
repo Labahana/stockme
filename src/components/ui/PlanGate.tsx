@@ -3,38 +3,51 @@
 import { Banner, BlockStack, Button, Text } from "@shopify/polaris";
 import type { ReactNode } from "react";
 import { PLAN_TIERS, type PlanTier } from "@/lib/constants";
+import { usePlanFeatures } from "@/lib/hooks/use-plan";
+import { useShop } from "@/lib/hooks/use-shop";
 
-/**
- * Soft feature gate UI. Billing enforcement is currently disabled for
- * testing — this still surfaces upgrade messaging when `allowed` is false.
- */
+const LEVEL: Record<PlanTier, number> = {
+  starter: 1,
+  growth: 2,
+  pro: 3,
+};
+
+/** Spec §15 — upgrade banner instead of silent fail. */
 export function PlanGate({
-  allowed,
+  requiredPlan = "growth",
+  featureName,
   feature,
-  requiredTier = "growth",
-  shop,
+  allowed,
   children,
 }: {
-  allowed: boolean;
-  feature: string;
-  requiredTier?: PlanTier | PlanTier[];
-  shop?: string;
+  requiredPlan?: PlanTier;
+  featureName?: string;
+  feature?: string;
+  /** When set, overrides plan check (useful while billing is disabled). */
+  allowed?: boolean;
   children: ReactNode;
 }) {
-  if (allowed) return <>{children}</>;
+  const shop = useShop();
+  const plan = usePlanFeatures();
+  const name = featureName ?? feature ?? "This feature";
+  const current = (plan.planTier as PlanTier) || "starter";
+  const ok =
+    allowed !== undefined
+      ? allowed
+      : // Billing disabled for testing — allow features through.
+        true || LEVEL[current] >= LEVEL[requiredPlan];
 
-  const tiers = Array.isArray(requiredTier) ? requiredTier : [requiredTier];
-  const names = tiers.map((t) => PLAN_TIERS[t].name).join(" / ");
-  const qs = shop ? `?shop=${encodeURIComponent(shop)}` : "";
+  if (ok) return <>{children}</>;
+
+  const qs = shop ? `?shop=${encodeURIComponent(shop)}&tab=billing` : "?tab=billing";
 
   return (
-    <Banner tone="warning" title={`${feature} requires ${names}`}>
+    <Banner tone="info" title={`${name} requires ${PLAN_TIERS[requiredPlan].name}`}>
       <BlockStack gap="200">
         <Text as="p">
-          Upgrade in Settings when billing is enabled. For now you can continue testing
-          core inventory workflows.
+          Upgrade to unlock {name.toLowerCase()}. You can change plans anytime in Settings.
         </Text>
-        <Button url={`/app/settings${qs}`}>Open Settings</Button>
+        <Button url={`/app/settings${qs}`}>Upgrade now</Button>
       </BlockStack>
     </Banner>
   );

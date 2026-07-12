@@ -4,16 +4,17 @@ import { NavMenu } from "@shopify/app-bridge-react";
 import { ReactNode, Suspense } from "react";
 import { useHost, useShop } from "@/lib/hooks/use-shop";
 
-/** Matches Stocky by Shopify navigation IA */
+/** Mirrors wireframe sidebar for Shopify Admin App Bridge nav. */
 const NAV_ITEMS: { href: string; label: string; rel?: string }[] = [
-  { href: "/app", label: "Home", rel: "home" },
+  { href: "/app", label: "Dashboard", rel: "home" },
+  { href: "/app/purchase-orders", label: "Purchase Orders" },
   { href: "/app/inventory", label: "Inventory" },
-  { href: "/app/purchase-orders", label: "Purchases" },
-  { href: "/app/stocktakes", label: "Stocktakes" },
-  { href: "/app/transfers", label: "Transfers" },
-  { href: "/app/suppliers", label: "Suppliers" },
+  { href: "/app/vendors", label: "Vendors" },
   { href: "/app/reports", label: "Reports" },
+  { href: "/app/transfers", label: "Transfers" },
+  { href: "/app/stock-takes", label: "Stock Takes" },
   { href: "/app/settings", label: "Settings" },
+  { href: "/app/import", label: "Import from Stocky" },
 ];
 
 function NavLinks() {

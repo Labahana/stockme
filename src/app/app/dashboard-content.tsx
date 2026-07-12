@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Badge,
   Banner,
   BlockStack,
   Button,
@@ -14,8 +13,10 @@ import {
   Text,
 } from "@shopify/polaris";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { apiUrl } from "@/lib/hooks/use-shop";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import { LowStockAlert } from "@/components/inventory/LowStockAlert";
 
 type Location = { id: string; name: string; is_primary: boolean };
 
@@ -35,24 +36,54 @@ type PurchaseOrder = {
   suppliers: { name: string } | { name: string }[];
 };
 
+type Stocktake = {
+  id: string;
+  name: string;
+  status: string;
+  locations: { name: string } | { name: string }[];
+};
+
 function supplierName(po: PurchaseOrder) {
   const s = po.suppliers;
   if (Array.isArray(s)) return s[0]?.name ?? "—";
   return s?.name ?? "—";
 }
 
-function statusTone(status: string): "success" | "attention" | "info" | "warning" | undefined {
-  switch (status) {
-    case "received":
-      return "success";
-    case "sent":
-    case "partially_received":
-      return "attention";
-    case "draft":
-      return "info";
-    default:
-      return undefined;
-  }
+function locationName(st: Stocktake) {
+  const l = st.locations;
+  if (Array.isArray(l)) return l[0]?.name ?? "—";
+  return l?.name ?? "—";
+}
+
+function StatCard({
+  label,
+  value,
+  sub,
+  action,
+}: {
+  label: string;
+  value: string | number;
+  sub: string;
+  action: { content: string; url: string };
+}) {
+  return (
+    <Card>
+      <BlockStack gap="200">
+        <Text as="p" tone="subdued" variant="bodySm">
+          {label}
+        </Text>
+        <Text as="p" variant="headingXl">
+          {value}
+        </Text>
+        <Text as="p" tone="subdued" variant="bodySm">
+          {sub}
+        </Text>
+        <Button url={action.url} variant="plain">
+          {action.content}
+        </Button>
+      </BlockStack>
+    </Card>
+  );
 }
 
 export default function DashboardContent() {
@@ -63,8 +94,10 @@ export default function DashboardContent() {
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
   const [locations, setLocations] = useState<Location[]>([]);
   const [lowStock, setLowStock] = useState<InventoryItem[]>([]);
+  const [lowCount, setLowCount] = useState(0);
   const [openPos, setOpenPos] = useState<PurchaseOrder[]>([]);
-  const [skuCount, setSkuCount] = useState(0);
+  const [incomingPos, setIncomingPos] = useState(0);
+  const [stocktakes, setStocktakes] = useState<Stocktake[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -95,19 +128,29 @@ export default function DashboardContent() {
         if (listRes.ok) {
           const list = await listRes.json();
           setLowStock(list.items ?? []);
-          setSkuCount(list.pagination?.total ?? 0);
+          setLowCount(list.pagination?.total ?? 0);
         }
       }
 
-      const poRes = await fetch(apiUrl("/api/purchase-orders", shop));
+      const [poRes, stRes] = await Promise.all([
+        fetch(apiUrl("/api/purchase-orders", shop)),
+        fetch(apiUrl("/api/stocktakes", shop)),
+      ]);
+
       if (poRes.ok) {
         const poData = await poRes.json();
         const orders = (poData.purchaseOrders ?? []) as PurchaseOrder[];
-        setOpenPos(
-          orders
-            .filter((o) => !["received", "cancelled"].includes(o.status))
-            .slice(0, 8),
+        const open = orders.filter((o) => !["received", "cancelled"].includes(o.status));
+        setOpenPos(open.slice(0, 8));
+        setIncomingPos(
+          orders.filter((o) => ["sent", "partially_received"].includes(o.status)).length,
         );
+      }
+
+      if (stRes.ok) {
+        const stData = await stRes.json();
+        const takes = (stData.stocktakes ?? []) as Stocktake[];
+        setStocktakes(takes.filter((t) => t.status === "in_progress").slice(0, 5));
       }
     } catch {
       setError("Failed to load dashboard");
@@ -144,20 +187,22 @@ export default function DashboardContent() {
 
   return (
     <Page
-      title="Home"
+      title="StockMe"
       subtitle={
         lastSyncedAt
           ? `Last synced ${new Date(lastSyncedAt).toLocaleString()}`
           : "Sync catalog to start managing inventory"
       }
       primaryAction={{
-        content: syncing ? "Syncing…" : "Sync inventory",
-        onAction: runSync,
-        loading: syncing,
+        content: "+ New PO",
+        url: `/app/purchase-orders/new${qs}`,
       }}
       secondaryActions={[
-        { content: "Create purchase order", url: `/app/purchase-orders${qs}` },
-        { content: "Start stocktake", url: `/app/stocktakes${qs}` },
+        {
+          content: syncing ? "Syncing…" : "Sync inventory",
+          onAction: runSync,
+          loading: syncing,
+        },
       ]}
     >
       <Layout>
@@ -183,95 +228,90 @@ export default function DashboardContent() {
               tone="warning"
               action={{ content: syncing ? "Syncing…" : "Sync now", onAction: runSync }}
             >
-              <p>
-                Pull products, variants, locations, and stock levels from Shopify — the same
-                first step as Stocky after install.
-              </p>
+              <p>Pull products, variants, locations, and stock levels — same first step as Stocky.</p>
             </Banner>
           </Layout.Section>
         )}
 
         <Layout.Section>
-          <InlineGrid columns={{ xs: 1, sm: 3 }} gap="400">
-            <Card>
-              <BlockStack gap="100">
-                <Text as="p" tone="subdued" variant="bodySm">
-                  Locations
-                </Text>
-                <Text as="p" variant="headingLg">
-                  {locations.length}
-                </Text>
-              </BlockStack>
-            </Card>
-            <Card>
-              <BlockStack gap="100">
-                <Text as="p" tone="subdued" variant="bodySm">
-                  Low stock variants
-                </Text>
-                <Text as="p" variant="headingLg">
-                  {loading ? "—" : skuCount}
-                </Text>
-              </BlockStack>
-            </Card>
-            <Card>
-              <BlockStack gap="100">
-                <Text as="p" tone="subdued" variant="bodySm">
-                  Open purchase orders
-                </Text>
-                <Text as="p" variant="headingLg">
-                  {loading ? "—" : openPos.length}
-                </Text>
-              </BlockStack>
-            </Card>
+          <InlineGrid columns={{ xs: 1, sm: 2, lg: 4 }} gap="400">
+            <StatCard
+              label="LOW STOCK"
+              value={loading ? "—" : lowCount}
+              sub="items"
+              action={{ content: "View all", url: `/app/reports${qs}` }}
+            />
+            <StatCard
+              label="INCOMING POs"
+              value={loading ? "—" : incomingPos}
+              sub="shipments"
+              action={{ content: "Receive", url: `/app/purchase-orders${qs}` }}
+            />
+            <StatCard
+              label="OPEN POs"
+              value={loading ? "—" : openPos.length}
+              sub="pending"
+              action={{ content: "Manage", url: `/app/purchase-orders${qs}` }}
+            />
+            <StatCard
+              label="LOCATIONS"
+              value={loading ? "—" : locations.length}
+              sub="active"
+              action={{ content: "Inventory", url: `/app/inventory${qs}` }}
+            />
           </InlineGrid>
         </Layout.Section>
 
         <Layout.Section>
+          <LowStockAlert
+            items={lowStock}
+            loading={loading}
+            shop={shop}
+            onCreatePo={() => {
+              window.location.href = `/app/purchase-orders/new${qs}`;
+            }}
+          />
+        </Layout.Section>
+
+        <Layout.Section variant="oneHalf">
           <Card padding="0">
-            <BoxPad>
+            <div style={{ padding: "16px 20px" }}>
               <InlineStack align="space-between" blockAlign="center">
                 <Text as="h2" variant="headingMd">
-                  Low stock
+                  Recent Purchase Orders
                 </Text>
-                <Button url={`/app/reports${qs}`} variant="plain">
-                  View low stock report
+                <Button url={`/app/purchase-orders${qs}`} variant="plain">
+                  View all POs
                 </Button>
               </InlineStack>
-            </BoxPad>
-            {lowStock.length === 0 ? (
-              <BoxPad>
+            </div>
+            {openPos.length === 0 ? (
+              <div style={{ padding: "0 20px 16px" }}>
                 <Text as="p" tone="subdued">
-                  {loading ? "Loading…" : "No low-stock variants at your primary location."}
+                  {loading ? "Loading…" : "No open purchase orders."}
                 </Text>
-              </BoxPad>
+              </div>
             ) : (
               <IndexTable
-                resourceName={{ singular: "variant", plural: "variants" }}
-                itemCount={lowStock.length}
-                headings={[
-                  { title: "Product" },
-                  { title: "SKU" },
-                  { title: "Available" },
-                  { title: "Min" },
-                ]}
+                resourceName={{ singular: "purchase order", plural: "purchase orders" }}
+                itemCount={openPos.length}
+                headings={[{ title: "PO #" }, { title: "Vendor" }, { title: "Status" }]}
                 selectable={false}
               >
-                {lowStock.map((item, index) => (
-                  <IndexTable.Row id={item.variant_id} key={item.variant_id} position={index}>
+                {openPos.map((po, index) => (
+                  <IndexTable.Row id={po.id} key={po.id} position={index}>
                     <IndexTable.Cell>
-                      <Text as="span" fontWeight="semibold">
-                        {item.product_title}
-                      </Text>
-                      {item.variant_title && item.variant_title !== "Default Title" && (
-                        <Text as="span" tone="subdued">
-                          {" "}
-                          · {item.variant_title}
-                        </Text>
-                      )}
+                      <Button
+                        url={`/app/purchase-orders/${po.id}${qs}`}
+                        variant="plain"
+                      >
+                        {po.po_number}
+                      </Button>
                     </IndexTable.Cell>
-                    <IndexTable.Cell>{item.sku ?? "—"}</IndexTable.Cell>
-                    <IndexTable.Cell>{item.available}</IndexTable.Cell>
-                    <IndexTable.Cell>{item.min_stock}</IndexTable.Cell>
+                    <IndexTable.Cell>{supplierName(po)}</IndexTable.Cell>
+                    <IndexTable.Cell>
+                      <StatusBadge status={po.status} />
+                    </IndexTable.Cell>
                   </IndexTable.Row>
                 ))}
               </IndexTable>
@@ -279,47 +319,37 @@ export default function DashboardContent() {
           </Card>
         </Layout.Section>
 
-        <Layout.Section>
+        <Layout.Section variant="oneHalf">
           <Card padding="0">
-            <BoxPad>
+            <div style={{ padding: "16px 20px" }}>
               <InlineStack align="space-between" blockAlign="center">
                 <Text as="h2" variant="headingMd">
-                  Purchase orders
+                  Pending Stock Takes
                 </Text>
-                <Button url={`/app/purchase-orders${qs}`} variant="plain">
-                  View all
+                <Button url={`/app/stock-takes${qs}`} variant="plain">
+                  Start count
                 </Button>
               </InlineStack>
-            </BoxPad>
-            {openPos.length === 0 ? (
-              <BoxPad>
+            </div>
+            {stocktakes.length === 0 ? (
+              <div style={{ padding: "0 20px 16px" }}>
                 <Text as="p" tone="subdued">
-                  {loading
-                    ? "Loading…"
-                    : "No open purchase orders. Create one from Purchases."}
+                  {loading ? "Loading…" : "No stock takes in progress."}
                 </Text>
-              </BoxPad>
+              </div>
             ) : (
               <IndexTable
-                resourceName={{ singular: "purchase order", plural: "purchase orders" }}
-                itemCount={openPos.length}
-                headings={[
-                  { title: "PO" },
-                  { title: "Supplier" },
-                  { title: "Status" },
-                ]}
+                resourceName={{ singular: "stock take", plural: "stock takes" }}
+                itemCount={stocktakes.length}
+                headings={[{ title: "Name" }, { title: "Location" }, { title: "Status" }]}
                 selectable={false}
               >
-                {openPos.map((po, index) => (
-                  <IndexTable.Row id={po.id} key={po.id} position={index}>
+                {stocktakes.map((st, index) => (
+                  <IndexTable.Row id={st.id} key={st.id} position={index}>
+                    <IndexTable.Cell>{st.name}</IndexTable.Cell>
+                    <IndexTable.Cell>{locationName(st)}</IndexTable.Cell>
                     <IndexTable.Cell>
-                      <Text as="span" fontWeight="semibold">
-                        {po.po_number}
-                      </Text>
-                    </IndexTable.Cell>
-                    <IndexTable.Cell>{supplierName(po)}</IndexTable.Cell>
-                    <IndexTable.Cell>
-                      <Badge tone={statusTone(po.status)}>{po.status.replace(/_/g, " ")}</Badge>
+                      <StatusBadge status={st.status} />
                     </IndexTable.Cell>
                   </IndexTable.Row>
                 ))}
@@ -332,24 +362,18 @@ export default function DashboardContent() {
           <Card>
             <BlockStack gap="300">
               <Text as="h2" variant="headingMd">
-                Quick links
+                Import from Stocky
               </Text>
-              <InlineStack gap="200" wrap>
-                <Button url={`/app/inventory${qs}`}>Inventory</Button>
-                <Button url={`/app/purchase-orders${qs}`}>Purchases</Button>
-                <Button url={`/app/stocktakes${qs}`}>Stocktakes</Button>
-                <Button url={`/app/transfers${qs}`}>Transfers</Button>
-                <Button url={`/app/suppliers${qs}`}>Suppliers</Button>
-                <Button url={`/app/import${qs}`}>Import from Stocky</Button>
-              </InlineStack>
+              <Text as="p" tone="subdued">
+                Moving from Stocky? Import your suppliers and PO history in one click.
+              </Text>
+              <Button url={`/app/import${qs}`} variant="primary">
+                Upload Stocky CSVs
+              </Button>
             </BlockStack>
           </Card>
         </Layout.Section>
       </Layout>
     </Page>
   );
-}
-
-function BoxPad({ children }: { children: ReactNode }) {
-  return <div style={{ padding: "16px 20px" }}>{children}</div>;
 }

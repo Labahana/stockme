@@ -17,6 +17,7 @@ import {
 import { apiUrl, useShop } from "@/lib/hooks/use-shop";
 import { usePlanFeatures } from "@/lib/hooks/use-plan";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { PlanGate } from "@/components/ui/PlanGate";
 import { UpgradeBanner } from "@/components/upgrade-banner";
 
 type Transfer = {
@@ -197,10 +198,11 @@ export function TransfersPageClient() {
   });
 
   return (
+    <PlanGate requiredPlan="growth" featureName="Stock transfers" allowed>
     <Page
       title="Transfers"
       primaryAction={{
-        content: "New transfer",
+        content: "+ New",
         onAction: () => setOpen(true),
         disabled: !transfersAllowed,
       }}
@@ -273,5 +275,6 @@ export function TransfersPageClient() {
         </Modal.Section>
       </Modal>
     </Page>
+    </PlanGate>
   );
 }

@@ -1,91 +1,108 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-/**
- * Click cell → edit → blur/Enter commits. Spec: inline everything for dense
- * inventory tables (min/max thresholds).
- */
+/** Spec §15 — click cell → edit → blur/Enter commits. */
 export function InlineEditCell({
   value,
+  onChange,
   onSave,
-  type = "number",
+  type = "text",
+  prefix,
+  suffix,
   min,
   placeholder = "—",
   disabled,
+  style,
 }: {
   value: string | number | null | undefined;
-  onSave: (next: string) => Promise<void> | void;
-  type?: "text" | "number";
+  /** Spec API */
+  onChange?: (value: string) => void;
+  /** Back-compat async save used by inventory page */
+  onSave?: (value: string) => Promise<void> | void;
+  type?: "text" | "number" | "currency";
+  prefix?: string;
+  suffix?: string;
   min?: number;
   placeholder?: string;
   disabled?: boolean;
+  style?: React.CSSProperties;
 }) {
-  const display = value === null || value === undefined || value === "" ? "" : String(value);
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(display);
+  const display =
+    value === null || value === undefined || value === "" ? "" : String(value);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(display);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!editing) setDraft(display);
-  }, [display, editing]);
+    if (!isEditing) setEditValue(display);
+  }, [display, isEditing]);
 
-  const commit = async () => {
-    if (draft === display) {
-      setEditing(false);
-      return;
-    }
+  const commit = useCallback(async () => {
+    setIsEditing(false);
+    if (editValue === display) return;
     setSaving(true);
     try {
-      await onSave(draft);
-      setEditing(false);
+      onChange?.(editValue);
+      await onSave?.(editValue);
     } finally {
       setSaving(false);
     }
-  };
+  }, [editValue, display, onChange, onSave]);
 
   if (disabled) {
-    return <span className="stockme-inline-cell">{display || placeholder}</span>;
+    return (
+      <span style={style}>
+        {prefix}
+        {display || placeholder}
+        {suffix}
+      </span>
+    );
   }
 
-  if (!editing) {
+  if (isEditing) {
     return (
-      <button
-        type="button"
-        className="stockme-inline-cell stockme-inline-cell--editable"
-        onClick={() => setEditing(true)}
-        title="Click to edit"
-      >
-        {display || placeholder}
-      </button>
+      <div style={{ minWidth: 80, ...style }} onClick={(e) => e.stopPropagation()}>
+        <input
+          className="stockme-inline-input"
+          aria-label="Edit value"
+          autoFocus
+          disabled={saving}
+          type={type === "currency" ? "number" : type}
+          min={min}
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          onBlur={() => {
+            void commit();
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              void commit();
+            } else if (e.key === "Escape") {
+              setEditValue(display);
+              setIsEditing(false);
+            }
+          }}
+        />
+      </div>
     );
   }
 
   return (
-    <div className="stockme-inline-edit" onClick={(e) => e.stopPropagation()}>
-      <input
-        className="stockme-inline-input"
-        aria-label="Edit value"
-        autoFocus
-        type={type}
-        min={min}
-        value={draft}
-        disabled={saving}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={() => {
-          void commit();
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            void commit();
-          }
-          if (e.key === "Escape") {
-            setDraft(display);
-            setEditing(false);
-          }
-        }}
-      />
-    </div>
+    <button
+      type="button"
+      className="stockme-inline-cell"
+      style={style}
+      title="Click to edit"
+      onClick={() => {
+        setEditValue(display);
+        setIsEditing(true);
+      }}
+    >
+      {prefix}
+      {display || placeholder}
+      {suffix}
+    </button>
   );
 }

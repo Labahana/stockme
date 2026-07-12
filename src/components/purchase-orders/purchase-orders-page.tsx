@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Banner,
   BlockStack,
@@ -50,6 +51,7 @@ type ForecastLine = {
 
 export function PurchaseOrdersPageClient() {
   const shop = useShop();
+  const searchParams = useSearchParams();
   const plan = usePlanFeatures();
   const [orders, setOrders] = useState<PO[]>([]);
   const [suppliers, setSuppliers] = useState<{ id: string; name: string }[]>([]);
@@ -112,6 +114,12 @@ export function PurchaseOrdersPageClient() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (searchParams.get("create") === "1") {
+      setCreateOpen(true);
+    }
+  }, [searchParams]);
 
   const { selectedResources, allResourcesSelected, handleSelectionChange } =
     useIndexResourceState(orders as unknown as { [key: string]: unknown }[], {
@@ -300,7 +308,11 @@ export function PurchaseOrdersPageClient() {
         position={i}
         selected={selectedResources.includes(po.id)}
       >
-        <IndexTable.Cell>{po.po_number}</IndexTable.Cell>
+        <IndexTable.Cell>
+          <Button url={`/app/purchase-orders/${po.id}${shop ? `?shop=${encodeURIComponent(shop)}` : ""}`} variant="plain">
+            {po.po_number}
+          </Button>
+        </IndexTable.Cell>
         <IndexTable.Cell>
           <StatusBadge status={po.status} />
         </IndexTable.Cell>
@@ -333,9 +345,23 @@ export function PurchaseOrdersPageClient() {
 
   return (
     <Page
-      title="Purchases"
-      primaryAction={{ content: "Create purchase order", onAction: () => setCreateOpen(true) }}
-      secondaryActions={[{ content: "Export CSV", url: apiUrl("/api/purchase-orders?export=csv", shop) }]}
+      title="Purchase Orders"
+      primaryAction={{ content: "+ Create Purchase Order", onAction: () => setCreateOpen(true) }}
+      secondaryActions={[
+        { content: "Export CSV", url: apiUrl("/api/purchase-orders?export=csv", shop) },
+        {
+          content: "Force resync",
+          onAction: async () => {
+            const res = await fetch(apiUrl("/api/sync/force", shop), { method: "POST" });
+            if (!res.ok) {
+              const data = await res.json().catch(() => ({}));
+              setError(data.error ?? "Sync failed");
+            } else {
+              load();
+            }
+          },
+        },
+      ]}
     >
       <BlockStack gap="400">
         {error && <Banner tone="critical" onDismiss={() => setError(null)}>{error}</Banner>}
