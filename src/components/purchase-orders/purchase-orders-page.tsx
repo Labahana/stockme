@@ -334,8 +334,8 @@ export function PurchaseOrdersPageClient() {
 
   return (
     <Page
-      title="Purchase Orders"
-      primaryAction={{ content: "Create PO", onAction: () => setCreateOpen(true) }}
+      title="Purchases"
+      primaryAction={{ content: "Create purchase order", onAction: () => setCreateOpen(true) }}
       secondaryActions={[{ content: "Export CSV", url: apiUrl("/api/purchase-orders?export=csv", shop) }]}
     >
       <BlockStack gap="400">

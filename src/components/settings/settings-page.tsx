@@ -107,6 +107,18 @@ export function SettingsPageClient() {
 
         <Card>
           <BlockStack gap="200">
+            <Text as="h2" variant="headingMd">Migrate from Stocky</Text>
+            <Text as="p" tone="subdued">
+              Import Stocky purchase order CSVs and your supplier spreadsheet.
+            </Text>
+            <Button url={`/app/import${shop ? `?shop=${encodeURIComponent(shop)}` : ""}`}>
+              Import from Stocky
+            </Button>
+          </BlockStack>
+        </Card>
+
+        <Card>
+          <BlockStack gap="200">
             <Text as="h2" variant="headingMd">Help</Text>
             <Text as="p">
               Stockme is independently built and actively maintained — not going anywhere.

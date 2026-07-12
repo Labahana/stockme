@@ -15,9 +15,10 @@ import {
 import { apiUrl, useShop } from "@/lib/hooks/use-shop";
 import { usePlanFeatures } from "@/lib/hooks/use-plan";
 
+/** Labels aligned with Stocky Reports menu */
 const REPORT_TYPES = [
-  { label: "Low stock", value: "low_stock" },
-  { label: "Stock valuation", value: "valuation" },
+  { label: "Low Stock Variants", value: "low_stock" },
+  { label: "Current Stock on Hand", value: "valuation" },
   { label: "Supplier performance", value: "supplier_performance" },
   { label: "Cost of goods (COGS)", value: "cogs" },
   { label: "Sell-through", value: "sell_through" },
@@ -65,7 +66,7 @@ export function ReportsPageClient() {
   const tableRows = rows.map((r) => columns.map((c) => String(r[c] ?? "")));
 
   return (
-    <Page title="Reports" subtitle="One-click reports with built-in totals">
+    <Page title="Reports" subtitle="Stock analytics — export CSV like Stocky">
       <BlockStack gap="400">
         {error && <Banner tone="critical" onDismiss={() => setError(null)}>{error}</Banner>}
         <Card>

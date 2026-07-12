@@ -4,15 +4,15 @@ import { NavMenu } from "@shopify/app-bridge-react";
 import { ReactNode, Suspense } from "react";
 import { useHost, useShop } from "@/lib/hooks/use-shop";
 
+/** Matches Stocky by Shopify navigation IA */
 const NAV_ITEMS: { href: string; label: string; rel?: string }[] = [
-  { href: "/app", label: "Dashboard", rel: "home" },
+  { href: "/app", label: "Home", rel: "home" },
   { href: "/app/inventory", label: "Inventory" },
-  { href: "/app/purchase-orders", label: "Purchase Orders" },
-  { href: "/app/suppliers", label: "Suppliers" },
+  { href: "/app/purchase-orders", label: "Purchases" },
   { href: "/app/stocktakes", label: "Stocktakes" },
   { href: "/app/transfers", label: "Transfers" },
+  { href: "/app/suppliers", label: "Suppliers" },
   { href: "/app/reports", label: "Reports" },
-  { href: "/app/import", label: "Import from Stocky" },
   { href: "/app/settings", label: "Settings" },
 ];
 

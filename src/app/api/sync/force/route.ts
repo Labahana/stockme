@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { inngest } from "@/lib/inngest/client";
 import { loadOfflineSession, sanitizeShop } from "@/lib/shopify";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { assertSkuLimit } from "@/lib/billing/limits";
+import { queueOrRunFullSync } from "@/lib/sync/queue-full-sync";
 // import { billingBypassEnabled } from "@/lib/billing/plans";
+
+export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 export async function POST(request: NextRequest) {
   const shop = sanitizeShop(request.nextUrl.searchParams.get("shop"));
@@ -43,10 +46,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: skuBlocked }, { status: 403 });
   }
 
-  await inngest.send({
-    name: "shopify/sync.full",
-    data: { shop, force: true },
-  });
-
-  return NextResponse.json({ ok: true, message: "Force sync queued" });
+  try {
+    const result = await queueOrRunFullSync(shop, store.id, true);
+    return NextResponse.json({ ok: true, ...result });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Sync failed";
+    console.error("Force sync failed:", err);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }

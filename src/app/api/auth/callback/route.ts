@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { inngest } from "@/lib/inngest/client";
 import {
   ensureStoreRecord,
   registerWebhooks,
@@ -8,6 +7,7 @@ import {
 } from "@/lib/shopify";
 import { syncStoreBilling } from "@/lib/billing/plans";
 import { completeOfflineOAuth } from "@/lib/shopify/oauth";
+import { inngest } from "@/lib/inngest/client";
 
 export const dynamic = "force-dynamic";
 
@@ -30,13 +30,17 @@ export async function GET(request: NextRequest) {
       console.error("Webhook registration failed:", webhookError);
     }
 
-    try {
-      await inngest.send({
-        name: "shopify/sync.full",
-        data: { shop, force: true },
-      });
-    } catch (syncError) {
-      console.error("Initial sync queue failed:", syncError);
+    // Only queue via Inngest here — never block the OAuth redirect on a long
+    // catalog sync. Force sync from Inventory/Home runs inline when needed.
+    if (process.env.INNGEST_EVENT_KEY?.trim()) {
+      try {
+        await inngest.send({
+          name: "shopify/sync.full",
+          data: { shop, force: true },
+        });
+      } catch (syncError) {
+        console.error("Initial sync queue failed:", syncError);
+      }
     }
 
     const host = request.nextUrl.searchParams.get("host");

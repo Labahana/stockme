@@ -196,7 +196,7 @@ export function TransfersPageClient() {
 
   return (
     <Page
-      title="Stock Transfers"
+      title="Transfers"
       primaryAction={{
         content: "New transfer",
         onAction: () => setOpen(true),

@@ -111,6 +111,7 @@ export function InventoryPageClient() {
   const [vendor, setVendor] = useState<string | undefined>();
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkMin, setBulkMin] = useState("0");
@@ -232,6 +233,7 @@ export function InventoryPageClient() {
   const forceSync = async () => {
     setSyncing(true);
     setError(null);
+    setSyncMessage(null);
     try {
       const params = new URLSearchParams();
       if (shop) params.set("shop", shop);
@@ -243,10 +245,11 @@ export function InventoryPageClient() {
         setError(data.error ?? "Sync failed");
         return;
       }
+      setSyncMessage(data.message ?? "Sync complete");
       await loadMeta();
       await loadItems(pagination.page);
     } catch {
-      setError("Force sync failed");
+      setError("Sync failed");
     } finally {
       setSyncing(false);
     }
@@ -393,7 +396,7 @@ export function InventoryPageClient() {
     <Page
       title="Inventory"
       primaryAction={{
-        content: syncing ? "Syncing…" : "Force resync",
+        content: syncing ? "Syncing…" : "Sync inventory",
         onAction: forceSync,
         loading: syncing,
       }}
@@ -403,6 +406,11 @@ export function InventoryPageClient() {
         {error && (
           <Banner tone="critical" onDismiss={() => setError(null)}>
             {error}
+          </Banner>
+        )}
+        {syncMessage && (
+          <Banner tone="success" onDismiss={() => setSyncMessage(null)}>
+            {syncMessage}
           </Banner>
         )}
 
