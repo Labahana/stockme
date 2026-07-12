@@ -1,21 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sanitizeShop, shopify } from "@/lib/shopify";
-import { createRawResponse, toNextResponse } from "@/lib/shopify/next-adapter";
 
 export const dynamic = "force-dynamic";
 
 async function beginAuth(request: NextRequest, shop: string) {
-  const rawResponse = createRawResponse();
-
-  await shopify.auth.begin({
+  // web-api adapter returns a Fetch Response with Location + Set-Cookie
+  const response = await shopify.auth.begin({
     shop,
     callbackPath: "/api/auth/callback",
     isOnline: false,
     rawRequest: request,
-    rawResponse,
   });
 
-  return toNextResponse(rawResponse);
+  return new NextResponse(response.body, {
+    status: response.status,
+    headers: response.headers,
+  });
 }
 
 export async function GET(request: NextRequest) {

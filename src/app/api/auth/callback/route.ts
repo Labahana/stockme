@@ -8,17 +8,15 @@ import {
   loadOfflineSession,
 } from "@/lib/shopify";
 import { syncStoreBilling } from "@/lib/billing/plans";
-import { createRawResponse, toNextResponse } from "@/lib/shopify/next-adapter";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
-  const rawResponse = createRawResponse();
-
   try {
+    // web-api adapter reads Cookie from NextRequest correctly and returns
+    // { session, headers } where headers is a Fetch Headers (clears state cookie).
     const callback = await shopify.auth.callback({
       rawRequest: request,
-      rawResponse,
       expiring: true,
     });
 
@@ -53,22 +51,23 @@ export async function GET(request: NextRequest) {
       ? await shopify.auth.buildEmbeddedAppUrl(host)
       : `${process.env.NEXT_PUBLIC_APP_URL ?? "https://stocky-rho.vercel.app"}/app/settings?shop=${encodeURIComponent(callback.session.shop)}&billing=required`;
 
-    // Shopify's node adapter writes any response cookies (e.g. clearing the
-    // OAuth state cookie) directly onto rawResponse, so capture them here.
-    const oauthResponse = toNextResponse(rawResponse);
     const redirect = NextResponse.redirect(redirectUrl);
 
-    const setCookie = oauthResponse.headers.get("set-cookie");
-    if (setCookie) {
-      redirect.headers.set("set-cookie", setCookie);
+    // Preserve any Set-Cookie headers from the OAuth callback (clears state).
+    const oauthHeaders = callback.headers as Headers;
+    if (oauthHeaders && typeof oauthHeaders.getSetCookie === "function") {
+      for (const cookie of oauthHeaders.getSetCookie()) {
+        redirect.headers.append("Set-Cookie", cookie);
+      }
+    } else if (oauthHeaders) {
+      const setCookie = oauthHeaders.get("Set-Cookie");
+      if (setCookie) redirect.headers.append("Set-Cookie", setCookie);
     }
 
     return redirect;
   } catch (error) {
     console.error("OAuth callback error:", error);
-    return NextResponse.json(
-      { error: "OAuth callback failed" },
-      { status: 500 },
-    );
+    const message = error instanceof Error ? error.message : "OAuth callback failed";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
