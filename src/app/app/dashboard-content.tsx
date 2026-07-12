@@ -168,11 +168,24 @@ export default function DashboardContent() {
     setError(null);
     setSyncMessage(null);
     try {
-      const res = await fetch(apiUrl("/api/sync/force", shop), { method: "POST" });
-      const data = await res.json();
+      let res = await fetch(apiUrl("/api/sync/force", shop), { method: "POST" });
+      let data = await res.json();
       if (!res.ok) {
         setError(data.error ?? "Sync failed");
         return;
+      }
+      let guard = 0;
+      while (data.hasMore && guard < 500) {
+        setSyncMessage(data.message ?? "Syncing…");
+        res = await fetch(apiUrl("/api/sync/force?continue=1", shop), {
+          method: "POST",
+        });
+        data = await res.json();
+        if (!res.ok) {
+          setError(data.error ?? "Sync failed");
+          return;
+        }
+        guard += 1;
       }
       setSyncMessage(data.message ?? "Sync complete");
       await loadStatus();

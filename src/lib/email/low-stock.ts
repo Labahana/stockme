@@ -1,17 +1,31 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { reportLowStock } from "@/lib/reports";
 import { getFromEmail, getResendClient, requireResendInProduction } from "@/lib/email/client";
+import type { PlanTier } from "@/lib/constants";
+
+/** Free-tier Resend budget: fewer digests for lower plans. */
+function shouldSendDigestToday(planTier: PlanTier, now = new Date()) {
+  const day = now.getUTCDay(); // 0=Sun … 6=Sat
+  if (planTier === "pro") return true; // daily
+  if (planTier === "growth") return day === 1 || day === 4; // Mon, Thu
+  return day === 1; // starter: Monday only
+}
 
 export async function sendLowStockDigestForShop(shopId: string, shopDomain: string) {
   const supabase = createAdminClient();
   const { data: store, error } = await supabase
     .from("stores")
-    .select("id, email, low_stock_digest_enabled")
+    .select("id, email, low_stock_digest_enabled, plan_tier")
     .eq("id", shopId)
     .single();
 
   if (error || !store?.low_stock_digest_enabled || !store.email) {
     return { sent: false, reason: "digest_disabled_or_no_email" };
+  }
+
+  const plan = (store.plan_tier as PlanTier) || "starter";
+  if (!shouldSendDigestToday(plan)) {
+    return { sent: false, reason: "skipped_for_plan_frequency" };
   }
 
   const emailCheck = requireResendInProduction();
@@ -48,14 +62,14 @@ export async function sendLowStockDigestForShop(shopId: string, shopDomain: stri
     text: body,
   });
 
-  return { sent: true, count: totals.count };
+  return { sent: true, count: totals.count, plan };
 }
 
 export async function sendAllLowStockDigests() {
   const supabase = createAdminClient();
   const { data: stores, error } = await supabase
     .from("stores")
-    .select("id, shop_domain, low_stock_digest_enabled, email")
+    .select("id, shop_domain, low_stock_digest_enabled, email, plan_tier")
     .eq("low_stock_digest_enabled", true);
 
   if (error) throw error;

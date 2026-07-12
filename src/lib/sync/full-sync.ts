@@ -169,8 +169,6 @@ export async function runFullCatalogSync(
   shop: string,
   shopId: string,
 ): Promise<SyncStats> {
-  const client = await getGraphqlClient(shop);
-  const supabase = createAdminClient();
   const stats: SyncStats = {
     locations: 0,
     products: 0,
@@ -180,43 +178,119 @@ export async function runFullCatalogSync(
     bundleComponents: 0,
   };
 
-  const locationMap = await syncLocations(
-    client,
-    supabase,
-    shopId,
-    stats,
-  );
+  await runCatalogSyncStep(shop, shopId, { phase: "locations", cursor: null }, stats);
 
   let productCursor: string | null = null;
-
   do {
-    const data: ProductsQueryResult = await shopifyGql(
-      client,
-      PRODUCTS_QUERY,
-      { cursor: productCursor },
+    const step = await runCatalogSyncStep(
+      shop,
+      shopId,
+      { phase: "products", cursor: productCursor },
+      stats,
     );
-
-    for (const { node: product } of data.products.edges) {
-      await syncProduct(
-        client,
-        supabase,
-        shopId,
-        product,
-        locationMap,
-        stats,
-      );
-    }
-
-    productCursor = data.products.pageInfo.hasNextPage
-      ? data.products.pageInfo.endCursor
-      : null;
+    productCursor = step.nextCursor;
   } while (productCursor);
 
-  const bundleStats = await runBundleComponentSync(shop, shopId);
-  stats.bundleParents = bundleStats.bundleParents;
-  stats.bundleComponents = bundleStats.bundleComponents;
-
+  await runCatalogSyncStep(shop, shopId, { phase: "bundles", cursor: null }, stats);
   return stats;
+}
+
+export type CatalogSyncStepInput = {
+  phase: "locations" | "products" | "bundles";
+  cursor: string | null;
+};
+
+export type CatalogSyncStepResult = {
+  nextPhase: "locations" | "products" | "bundles" | "completed";
+  nextCursor: string | null;
+  pageProducts: number;
+  pageVariants: number;
+  pageInventory: number;
+  pageLocations: number;
+};
+
+/**
+ * One free-tier-safe sync step (locations OR one product page OR bundles).
+ * Call repeatedly until nextPhase === "completed".
+ */
+export async function runCatalogSyncStep(
+  shop: string,
+  shopId: string,
+  input: CatalogSyncStepInput,
+  stats?: SyncStats,
+): Promise<CatalogSyncStepResult> {
+  const client = await getGraphqlClient(shop);
+  const supabase = createAdminClient();
+  const local: SyncStats = stats ?? {
+    locations: 0,
+    products: 0,
+    variants: 0,
+    inventoryLevels: 0,
+    bundleParents: 0,
+    bundleComponents: 0,
+  };
+
+  if (input.phase === "locations") {
+    await syncLocations(client, supabase, shopId, local);
+    return {
+      nextPhase: "products",
+      nextCursor: null,
+      pageProducts: 0,
+      pageVariants: 0,
+      pageInventory: 0,
+      pageLocations: local.locations,
+    };
+  }
+
+  if (input.phase === "bundles") {
+    const bundleStats = await runBundleComponentSync(shop, shopId);
+    local.bundleParents = bundleStats.bundleParents;
+    local.bundleComponents = bundleStats.bundleComponents;
+    return {
+      nextPhase: "completed",
+      nextCursor: null,
+      pageProducts: 0,
+      pageVariants: 0,
+      pageInventory: 0,
+      pageLocations: 0,
+    };
+  }
+
+  // products phase — one GraphQL page (~25 products)
+  const before = {
+    products: local.products,
+    variants: local.variants,
+    inventoryLevels: local.inventoryLevels,
+  };
+
+  const { data: locs } = await supabase
+    .from("locations")
+    .select("id, shopify_location_id")
+    .eq("shop_id", shopId);
+  const locationMap = new Map<number, string>();
+  for (const loc of locs ?? []) {
+    locationMap.set(loc.shopify_location_id, loc.id);
+  }
+
+  const data: ProductsQueryResult = await shopifyGql(client, PRODUCTS_QUERY, {
+    cursor: input.cursor,
+  });
+
+  for (const { node: product } of data.products.edges) {
+    await syncProduct(client, supabase, shopId, product, locationMap, local);
+  }
+
+  const hasMore = data.products.pageInfo.hasNextPage;
+  const nextCursor = hasMore ? data.products.pageInfo.endCursor : null;
+
+  return {
+    nextPhase: hasMore ? "products" : "bundles",
+    nextCursor,
+    pageProducts: local.products - before.products,
+    pageVariants: local.variants - before.variants,
+    pageInventory: local.inventoryLevels - before.inventoryLevels,
+    pageLocations: 0,
+  };
 }
 
 async function syncLocations(

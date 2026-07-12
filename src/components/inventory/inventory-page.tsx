@@ -94,7 +94,7 @@ export function InventoryPageClient() {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [pagination, setPagination] = useState({
     page: 1,
-    limit: 50,
+    limit: 20,
     total: 0,
     totalPages: 1,
   });
@@ -151,7 +151,7 @@ export function InventoryPageClient() {
       const params = new URLSearchParams(apiBase.split("?")[1] ?? "");
       params.set("consolidated", "true");
       params.set("page", String(page));
-      params.set("limit", "50");
+      params.set("limit", "20");
       if (query) params.set("search", query);
       const res = await fetch(`/api/inventory?${params.toString()}`);
       if (!res.ok) {
@@ -172,7 +172,7 @@ export function InventoryPageClient() {
     const params = new URLSearchParams(apiBase.split("?")[1] ?? "");
     params.set("locationId", locationId);
     params.set("page", String(page));
-    params.set("limit", "50");
+    params.set("limit", "20");
     if (query) params.set("search", query);
     if (stockStatus !== "all") params.set("stockStatus", stockStatus);
     if (tag) params.set("tag", tag);
@@ -232,14 +232,30 @@ export function InventoryPageClient() {
     try {
       const params = new URLSearchParams();
       if (shop) params.set("shop", shop);
-      const res = await fetch(`/api/sync/force?${params.toString()}`, {
+      let res = await fetch(`/api/sync/force?${params.toString()}`, {
         method: "POST",
       });
-      const data = await res.json();
+      let data = await res.json();
       if (!res.ok) {
         setError(data.error ?? "Sync failed");
         return;
       }
+
+      // Free-tier chunked sync: keep continuing until catalog is done
+      let guard = 0;
+      while (data.hasMore && guard < 500) {
+        setSyncMessage(data.message ?? "Syncing…");
+        const cont = new URLSearchParams(params);
+        cont.set("continue", "1");
+        res = await fetch(`/api/sync/force?${cont.toString()}`, { method: "POST" });
+        data = await res.json();
+        if (!res.ok) {
+          setError(data.error ?? "Sync failed");
+          return;
+        }
+        guard += 1;
+      }
+
       setSyncMessage(data.message ?? "Sync complete");
       await loadMeta();
       await loadItems(pagination.page);

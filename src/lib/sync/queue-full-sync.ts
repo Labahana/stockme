@@ -1,17 +1,17 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { inngest } from "@/lib/inngest/client";
-import { runFullCatalogSync } from "@/lib/sync/full-sync";
+import { runChunkedSyncStep, type ChunkedSyncStatus } from "@/lib/sync/chunked-sync";
 import { assertSkuLimit } from "@/lib/billing/limits";
 
 export type QueueFullSyncResult = {
-  mode: "queued" | "inline";
+  mode: "queued" | "chunked" | "inline";
+  hasMore?: boolean;
+  sync?: ChunkedSyncStatus;
   stats?: {
     locations: number;
     products: number;
     variants: number;
     inventoryLevels: number;
-    bundleParents: number;
-    bundleComponents: number;
   };
   message: string;
 };
@@ -20,78 +20,9 @@ function hasInngestEventKey() {
   return Boolean(process.env.INNGEST_EVENT_KEY?.trim());
 }
 
-async function runInlineFullSync(shop: string, shopId: string, force: boolean) {
-  const supabase = createAdminClient();
-  const { data: syncRun, error: runError } = await supabase
-    .from("sync_runs")
-    .insert({
-      shop_id: shopId,
-      sync_type: force ? "force" : "full",
-      status: "running",
-    })
-    .select("id")
-    .single();
-
-  if (runError || !syncRun) {
-    throw new Error(runError?.message ?? "Failed to create sync run");
-  }
-
-  try {
-    const stats = await runFullCatalogSync(shop, shopId);
-    const { data: store } = await supabase
-      .from("stores")
-      .select("*")
-      .eq("id", shopId)
-      .single();
-
-    const skuWarning = store ? await assertSkuLimit(store) : null;
-    const total =
-      stats.products +
-      stats.variants +
-      stats.inventoryLevels +
-      stats.locations +
-      stats.bundleComponents;
-
-    await supabase
-      .from("sync_runs")
-      .update({
-        status: skuWarning ? "failed" : "completed",
-        completed_at: new Date().toISOString(),
-        items_processed: total,
-        error_message: skuWarning,
-      })
-      .eq("id", syncRun.id);
-
-    if (!skuWarning) {
-      await supabase
-        .from("stores")
-        .update({ last_synced_at: new Date().toISOString() })
-        .eq("id", shopId);
-    }
-
-    if (skuWarning) {
-      throw new Error(skuWarning);
-    }
-
-    return stats;
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    await supabase
-      .from("sync_runs")
-      .update({
-        status: "failed",
-        completed_at: new Date().toISOString(),
-        items_processed: 0,
-        error_message: message,
-      })
-      .eq("id", syncRun.id);
-    throw err;
-  }
-}
-
 /**
- * Prefer Inngest when configured. Otherwise run catalog sync inline so
- * force-sync works without INNGEST_EVENT_KEY (common on early deploys).
+ * Prefer Inngest when configured. Otherwise run chunked sync steps that fit
+ * Vercel Hobby's ~10s timeout (client continues until hasMore is false).
  */
 export async function queueOrRunFullSync(
   shop: string,
@@ -109,10 +40,67 @@ export async function queueOrRunFullSync(
     };
   }
 
-  const stats = await runInlineFullSync(shop, shopId, force);
+  const supabase = createAdminClient();
+  const { data: syncRun } = await supabase
+    .from("sync_runs")
+    .insert({
+      shop_id: shopId,
+      sync_type: force ? "force" : "full",
+      status: "running",
+    })
+    .select("id")
+    .single();
+
+  // Keep calling chunk steps in this request while under ~7s, then return
+  // hasMore so the client can continue without hitting the hard timeout.
+  const deadline = Date.now() + 7_000;
+  let status = await runChunkedSyncStep(shop, shopId, { restart: true });
+  while (status.hasMore && Date.now() < deadline) {
+    status = await runChunkedSyncStep(shop, shopId);
+  }
+
+  if (syncRun?.id) {
+    const skuWarning = await (async () => {
+      const { data: store } = await supabase.from("stores").select("*").eq("id", shopId).single();
+      return store ? assertSkuLimit(store) : null;
+    })();
+
+    await supabase
+      .from("sync_runs")
+      .update({
+        status: status.phase === "error" || skuWarning ? "failed" : status.hasMore ? "running" : "completed",
+        completed_at: status.hasMore ? null : new Date().toISOString(),
+        items_processed:
+          status.productsSynced + status.variantsSynced + status.inventorySynced,
+        error_message: skuWarning ?? status.error ?? null,
+      })
+      .eq("id", syncRun.id);
+  }
+
+  if (status.phase === "error") {
+    throw new Error(status.error ?? status.message);
+  }
+
   return {
-    mode: "inline",
-    stats,
-    message: `Synced ${stats.products} products, ${stats.variants} variants across ${stats.locations} locations.`,
+    mode: "chunked",
+    hasMore: status.hasMore,
+    sync: status,
+    stats: {
+      locations: status.locationsSynced,
+      products: status.productsSynced,
+      variants: status.variantsSynced,
+      inventoryLevels: status.inventorySynced,
+    },
+    message: status.hasMore
+      ? `${status.message} Continuing…`
+      : status.message,
   };
+}
+
+export async function continueChunkedSync(shop: string, shopId: string) {
+  const status = await runChunkedSyncStep(shop, shopId);
+  if (status.phase === "error") {
+    throw new Error(status.error ?? status.message);
+  }
+  return status;
 }

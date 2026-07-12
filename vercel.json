@@ -1,6 +1,12 @@
 {
   "framework": "nextjs",
   "regions": ["iad1"],
+  "crons": [
+    {
+      "path": "/api/cron/daily-maintenance",
+      "schedule": "0 9 * * *"
+    }
+  ],
   "headers": [
     {
       "source": "/api/(.*)",
