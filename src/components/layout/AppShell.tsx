@@ -1,7 +1,7 @@
 "use client";
 
 import { Modal, Text, BlockStack, Button } from "@shopify/polaris";
-import { useState, type ReactNode } from "react";
+import { Suspense, useState, type ReactNode } from "react";
 import { SidebarNav } from "@/components/layout/SidebarNav";
 
 export function AppFooter() {
@@ -57,7 +57,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         <span />
       </div>
 
-      <SidebarNav open={mobileOpen} onNavigate={() => setMobileOpen(false)} />
+      <Suspense fallback={null}>
+        <SidebarNav open={mobileOpen} onNavigate={() => setMobileOpen(false)} />
+      </Suspense>
 
       {mobileOpen && (
         <button

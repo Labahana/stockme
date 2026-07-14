@@ -6,6 +6,9 @@ import { AppShell } from "@/components/layout/AppShell";
 import { BillingGuard } from "@/components/billing-guard";
 import { InstallGuard } from "@/components/install-guard";
 
+/** Embedded Shopify app — always dynamic; never SSG (useSearchParams / App Bridge). */
+export const dynamic = "force-dynamic";
+
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <PolarisProvider>
