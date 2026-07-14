@@ -23,6 +23,13 @@ export function SettingsPageClient() {
   const [email, setEmail] = useState("");
   const [digestEnabled, setDigestEnabled] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [health, setHealth] = useState<{
+    estimatedDbMb: number;
+    alert: string;
+    tip: string;
+    counts: Record<string, number>;
+  } | null>(null);
+  const [archiving, setArchiving] = useState(false);
 
   const loadStatus = useCallback(
     () =>
@@ -53,8 +60,42 @@ export function SettingsPageClient() {
         .catch(() => {
           // Keep defaults; user can still save.
         }),
+      fetch(apiUrl("/api/maintenance", shop, host))
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+          if (data?.estimatedDbMb != null) setHealth(data);
+        })
+        .catch(() => undefined),
     ]);
   }, [shop, host, loadStatus]);
+
+  const runArchive = async () => {
+    setArchiving(true);
+    setMessage(null);
+    try {
+      const res = await fetch(apiUrl("/api/maintenance", shop, host), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ daysOld: 90 }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setMessage(data.error ?? "Archive failed");
+        return;
+      }
+      setMessage(
+        data.archived
+          ? `Archived ${data.archived} POs (~${Math.round((data.bytesFreed ?? 0) / 1024)} KB freed)`
+          : "No POs older than 90 days to archive",
+      );
+      const healthRes = await fetch(apiUrl("/api/maintenance", shop, host));
+      if (healthRes.ok) setHealth(await healthRes.json());
+    } catch {
+      setMessage("Archive failed");
+    } finally {
+      setArchiving(false);
+    }
+  };
 
   const saveAlerts = async (sendNow = false) => {
     const res = await fetch(apiUrl("/api/settings", shop, host), {
@@ -133,6 +174,40 @@ export function SettingsPageClient() {
 
         <Card>
           <BlockStack gap="300">
+            <Text as="h2" variant="headingMd">Free-tier storage</Text>
+            {health ? (
+              <>
+                <Text as="p">
+                  Estimated shop data: ~{health.estimatedDbMb} MB
+                  {health.alert === "red"
+                    ? " (critical)"
+                    : health.alert === "yellow"
+                      ? " (watch)"
+                      : " (ok)"}
+                </Text>
+                <Text as="p" tone="subdued">
+                  {health.tip}
+                </Text>
+                <Text as="p" tone="subdued" variant="bodySm">
+                  Variants {health.counts.variants ?? 0} · Inventory levels{" "}
+                  {health.counts.inventory_levels ?? 0} · POs{" "}
+                  {health.counts.purchase_orders ?? 0} · Webhook logs{" "}
+                  {health.counts.webhook_logs ?? 0}
+                </Text>
+              </>
+            ) : (
+              <Text as="p" tone="subdued">
+                Loading storage estimate…
+              </Text>
+            )}
+            <Button onClick={runArchive} loading={archiving}>
+              Archive POs older than 90 days
+            </Button>
+          </BlockStack>
+        </Card>
+
+        <Card>
+          <BlockStack gap="300">
             <Text as="h2" variant="headingMd">Low-stock email digest</Text>
             <FormLayout>
               <TextField
@@ -143,10 +218,14 @@ export function SettingsPageClient() {
                 autoComplete="email"
               />
               <Checkbox
-                label="Send daily low-stock digest"
+                label="Enable low-stock digest emails"
                 checked={digestEnabled}
                 onChange={setDigestEnabled}
               />
+              <Text as="p" tone="subdued" variant="bodySm">
+                Frequency follows your plan (Starter weekly, Growth every 3 days, Pro
+                daily) to stay within free-tier email limits.
+              </Text>
               <InlineGrid columns={2} gap="200">
                 <Button onClick={() => saveAlerts(false)}>Save alerts</Button>
                 <Button onClick={() => saveAlerts(true)}>Send test digest</Button>
