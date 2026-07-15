@@ -38,6 +38,34 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Marketing surfaces — feature-graphic palette */
+.stockme-marketing {
+  background:
+    radial-gradient(circle at 85% 18%, rgba(200, 235, 220, 0.65), transparent 42%),
+    radial-gradient(circle at 10% 60%, rgba(216, 243, 232, 0.45), transparent 40%),
+    linear-gradient(180deg, #f9fcfb 0%, #f3faf7 48%, #ffffff 100%);
+  font-family: "Segoe UI", "Avenir Next", "Helvetica Neue", sans-serif;
+}
+
+@keyframes stockme-float-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.stockme-hero-preview {
+  animation: stockme-float-in 0.7s ease-out both;
+}
+
+.stockme-marketing h1 {
+  animation: stockme-float-in 0.55s ease-out both;
+}
+
 /* Active sidebar item — Stocky green */
 .stockme-nav-active {
   border-left: 3px solid var(--stockme-primary) !important;
@@ -67,7 +95,7 @@ body {
   padding: 16px 16px 12px;
   font-weight: 600;
   font-size: 16px;
-  color: var(--p-text);
+  color: #0a5c4c;
   border-bottom: 1px solid var(--p-border-subdued);
 }
 

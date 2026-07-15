@@ -7,6 +7,10 @@ export const metadata: Metadata = {
   title: APP_NAME,
   description:
     "Stocky rebuilt — inventory management, purchase orders, and forecasting for Shopify POS Pro merchants.",
+  icons: {
+    icon: [{ url: "/app-store/stockme-favicon.png", type: "image/png" }],
+    apple: [{ url: "/app-store/stockme-app-icon-1200.png" }],
+  },
   other: {
     "shopify-api-key": process.env.NEXT_PUBLIC_SHOPIFY_API_KEY ?? "",
   },

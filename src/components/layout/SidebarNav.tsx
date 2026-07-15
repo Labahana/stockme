@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { StockmeMark } from "@/components/brand/StockmeLogo";
 import { useHost, useShop } from "@/lib/hooks/use-shop";
-import { PLAN_TIERS, type PlanTier } from "@/lib/constants";
+import { APP_NAME, PLAN_TIERS, type PlanTier } from "@/lib/constants";
 import { usePlanFeatures } from "@/lib/hooks/use-plan";
 
 type NavItem = { href: string; label: string; icon: string };
@@ -56,10 +57,8 @@ export function SidebarNav({
   return (
     <aside className={`stockme-sidebar${open ? " is-open" : ""}`}>
       <div className="stockme-sidebar__brand">
-        <span className="stockme-sidebar__brand-mark" aria-hidden>
-          S
-        </span>
-        <span className="label">StockMe</span>
+        <StockmeMark size={26} />
+        <span className="label">{APP_NAME}</span>
       </div>
 
       <nav className="stockme-sidebar__nav" aria-label="StockMe">
