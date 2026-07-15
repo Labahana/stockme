@@ -6,9 +6,11 @@ import type { Session } from "@shopify/shopify-api";
 const PLAN_NAMES: PlanTier[] = ["starter", "growth", "pro"];
 
 export function billingIsTest() {
-  // Default to test charges unless explicitly disabled (required for dev stores).
+  // Explicit override for App Store review (true) vs live charging (false).
+  if (process.env.SHOPIFY_BILLING_TEST === "true") return true;
   if (process.env.SHOPIFY_BILLING_TEST === "false") return false;
-  return true;
+  // Default: test charges outside production so merchants aren't charged by mistake.
+  return process.env.VERCEL_ENV !== "production";
 }
 
 /**

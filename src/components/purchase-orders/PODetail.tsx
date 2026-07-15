@@ -16,7 +16,7 @@ import {
   TextField,
 } from "@shopify/polaris";
 import { useParams, useSearchParams } from "next/navigation";
-import { apiUrl } from "@/lib/hooks/use-shop";
+import { apiUrl, shopFetch } from "@/lib/hooks/use-shop";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { BarcodeScannerModal } from "@/components/ui/BarcodeScannerModal";
 
@@ -76,7 +76,7 @@ export function PODetail() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(apiUrl(`/api/purchase-orders/${id}`, shop));
+      const res = await shopFetch(`/api/purchase-orders/${id}`, shop);
       const data = await res.json();
       if (!res.ok) {
         setError(data.error ?? "PO not found");
@@ -97,7 +97,7 @@ export function PODetail() {
 
   const sendPo = async () => {
     setBusy(true);
-    const res = await fetch(apiUrl(`/api/purchase-orders/${id}`, shop), {
+    const res = await shopFetch(`/api/purchase-orders/${id}`, shop, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "send" }),
@@ -129,7 +129,7 @@ export function PODetail() {
     }
 
     setBusy(true);
-    const res = await fetch(apiUrl(`/api/purchase-orders/${id}`, shop), {
+    const res = await shopFetch(`/api/purchase-orders/${id}`, shop, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -154,7 +154,7 @@ export function PODetail() {
   };
 
   const handleScan = async (barcode: string) => {
-    const res = await fetch(apiUrl(`/api/purchase-orders/${id}`, shop), {
+    const res = await shopFetch(`/api/purchase-orders/${id}`, shop, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

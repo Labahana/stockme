@@ -4,7 +4,7 @@ import { isNextResponse, resolveShopContext } from "@/lib/api/shop-context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { nextTransferNumber } from "@/lib/po/number";
 import { csvResponse, toCsv } from "@/lib/export/csv";
-// import { assertTransfersAllowed } from "@/lib/billing/limits";
+import { assertTransfersAllowed } from "@/lib/billing/limits";
 
 export const dynamic = "force-dynamic";
 
@@ -59,11 +59,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
 
-    // Plan-limit enforcement disabled for initial dev/testing.
-    // const locationError = assertTransfersAllowed(ctx.store);
-    // if (locationError) {
-    //   return NextResponse.json({ error: locationError }, { status: 403 });
-    // }
+    const locationError = assertTransfersAllowed(ctx.store);
+    if (locationError) {
+      return NextResponse.json({ error: locationError }, { status: 403 });
+    }
 
     const supabase = createAdminClient();
     const transferNumber = await nextTransferNumber(ctx.store.id);

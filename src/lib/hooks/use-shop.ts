@@ -5,11 +5,16 @@ import { useSearchParams } from "next/navigation";
 
 type ShopifyGlobal = {
   config?: { shop?: string; host?: string };
+  idToken?: () => Promise<string>;
 };
 
+function shopifyGlobal(): ShopifyGlobal | undefined {
+  if (typeof window === "undefined") return undefined;
+  return (window as unknown as { shopify?: ShopifyGlobal }).shopify;
+}
+
 function readAppBridgeConfig(): { shop: string; host: string } {
-  if (typeof window === "undefined") return { shop: "", host: "" };
-  const cfg = (window as unknown as { shopify?: ShopifyGlobal }).shopify?.config;
+  const cfg = shopifyGlobal()?.config;
   return {
     shop: cfg?.shop?.trim() ?? "",
     host: cfg?.host?.trim() ?? "",
@@ -64,6 +69,52 @@ export function apiUrl(path: string, shop: string, host?: string | null) {
   if (host) params.set("host", host);
   const qs = params.toString();
   return qs ? `${path}?${qs}` : path;
+}
+
+async function withSessionHeaders(init?: RequestInit): Promise<Headers> {
+  const headers = new Headers(init?.headers);
+  const idToken = shopifyGlobal()?.idToken;
+  if (idToken) {
+    try {
+      const token = await idToken();
+      if (token) headers.set("Authorization", `Bearer ${token}`);
+    } catch {
+      // Fall through — backend may allow query-only in development
+    }
+  }
+  if (!headers.has("Content-Type") && init?.body && !(init.body instanceof FormData)) {
+    headers.set("Content-Type", "application/json");
+  }
+  return headers;
+}
+
+/** fetch() a fully built same-origin URL with App Bridge session token. */
+export async function authFetch(url: string, init?: RequestInit): Promise<Response> {
+  const headers = await withSessionHeaders(init);
+  return fetch(url, { ...init, headers });
+}
+
+/**
+ * fetch() to app APIs with App Bridge session token (Authorization: Bearer).
+ * App Bridge also injects this for same-origin fetches; we set it explicitly for reliability.
+ *
+ * Overload styles:
+ * - shopFetch(path, shop, host, init?)
+ * - shopFetch(path, shop, init?)  // host omitted
+ */
+export async function shopFetch(
+  path: string,
+  shop: string,
+  hostOrInit?: string | null | RequestInit,
+  init?: RequestInit,
+): Promise<Response> {
+  const hostIsInit =
+    hostOrInit != null &&
+    typeof hostOrInit === "object" &&
+    !Array.isArray(hostOrInit);
+  const host = hostIsInit ? null : (hostOrInit as string | null | undefined);
+  const requestInit = hostIsInit ? (hostOrInit as RequestInit) : init;
+  return authFetch(apiUrl(path, shop, host), requestInit);
 }
 
 export function installUrl(shop: string, host?: string | null) {

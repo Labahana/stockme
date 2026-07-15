@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Banner, BlockStack, Button, Page } from "@shopify/polaris";
 import { AppLoading } from "@/components/app-loading";
-import { apiUrl, installUrl, useHost, useShop } from "@/lib/hooks/use-shop";
+import { installUrl, shopFetch, useHost, useShop } from "@/lib/hooks/use-shop";
 
 type InstallState = "waiting" | "checking" | "installed" | "missing";
 
@@ -25,7 +25,7 @@ export function InstallGuard({ children }: { children: React.ReactNode }) {
     setState("checking");
     let cancelled = false;
 
-    fetch(apiUrl("/api/billing", shop, host))
+    shopFetch("/api/billing", shop, host)
       .then(async (r) => {
         if (cancelled) return;
         if (!r.ok) {

@@ -22,6 +22,7 @@ import {
 import { generateBarcodeValue } from "@/lib/barcodes/generate";
 import { renderBarcodeDataUrl } from "@/lib/barcodes/render";
 import { usePlanFeatures } from "@/lib/hooks/use-plan";
+import { authFetch } from "@/lib/hooks/use-shop";
 import { UpgradeBanner } from "@/components/upgrade-banner";
 import { InlineEditCell } from "@/components/ui/InlineEditCell";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -132,7 +133,7 @@ export function InventoryPageClient() {
   }, [shop]);
 
   const loadMeta = useCallback(async () => {
-    const res = await fetch(apiBase);
+    const res = await authFetch(apiBase);
     if (!res.ok) throw new Error("Failed to load inventory metadata");
     const data = (await res.json()) as MetaResponse;
     setMeta(data);
@@ -153,7 +154,7 @@ export function InventoryPageClient() {
       params.set("page", String(page));
       params.set("limit", "20");
       if (query) params.set("search", query);
-      const res = await fetch(`/api/inventory?${params.toString()}`);
+      const res = await authFetch(`/api/inventory?${params.toString()}`);
       if (!res.ok) {
         setError("Failed to load consolidated inventory");
         setLoading(false);
@@ -178,7 +179,7 @@ export function InventoryPageClient() {
     if (tag) params.set("tag", tag);
     if (vendor) params.set("vendor", vendor);
 
-    const res = await fetch(`/api/inventory?${params.toString()}`);
+    const res = await authFetch(`/api/inventory?${params.toString()}`);
     if (!res.ok) {
       setError("Failed to load inventory");
       setLoading(false);
@@ -232,7 +233,7 @@ export function InventoryPageClient() {
     try {
       const params = new URLSearchParams();
       if (shop) params.set("shop", shop);
-      let res = await fetch(`/api/sync/force?${params.toString()}`, {
+      let res = await authFetch(`/api/sync/force?${params.toString()}`, {
         method: "POST",
       });
       let data = await res.json();
@@ -247,7 +248,7 @@ export function InventoryPageClient() {
         setSyncMessage(data.message ?? "Syncing…");
         const cont = new URLSearchParams(params);
         cont.set("continue", "1");
-        res = await fetch(`/api/sync/force?${cont.toString()}`, { method: "POST" });
+        res = await authFetch(`/api/sync/force?${cont.toString()}`, { method: "POST" });
         data = await res.json();
         if (!res.ok) {
           setError(data.error ?? "Sync failed");
@@ -282,7 +283,7 @@ export function InventoryPageClient() {
     } else {
       body.maxStock = raw.trim() === "" ? null : Math.max(0, Number(raw) || 0);
     }
-    const res = await fetch(`/api/inventory/bulk?${params.toString()}`, {
+    const res = await authFetch(`/api/inventory/bulk?${params.toString()}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -309,7 +310,7 @@ export function InventoryPageClient() {
     const params = new URLSearchParams();
     if (shop) params.set("shop", shop);
 
-    const res = await fetch(`/api/inventory/bulk?${params.toString()}`, {
+    const res = await authFetch(`/api/inventory/bulk?${params.toString()}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -348,7 +349,7 @@ export function InventoryPageClient() {
         }
 
         const barcode = generateBarcodeValue(variantId);
-        const res = await fetch(`/api/barcodes?${params.toString()}`, {
+        const res = await authFetch(`/api/barcodes?${params.toString()}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ variantId, barcode }),

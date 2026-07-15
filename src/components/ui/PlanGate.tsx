@@ -34,8 +34,7 @@ export function PlanGate({
   const ok =
     allowed !== undefined
       ? allowed
-      : // Billing disabled for testing — allow features through.
-        true || LEVEL[current] >= LEVEL[requiredPlan];
+      : LEVEL[current] >= LEVEL[requiredPlan];
 
   if (ok) return <>{children}</>;
 

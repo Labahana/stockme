@@ -21,7 +21,7 @@ import {
 } from "@shopify/polaris";
 import { FORECAST_METHODS, PLAN_TIERS } from "@/lib/constants";
 import { downloadPurchaseOrderPdf } from "@/lib/export/po-pdf";
-import { apiUrl, useShop } from "@/lib/hooks/use-shop";
+import { apiUrl, useShop, shopFetch } from "@/lib/hooks/use-shop";
 import { usePlanFeatures } from "@/lib/hooks/use-plan";
 import { UpgradeBanner } from "@/components/upgrade-banner";
 import { BarcodeScanner } from "@/components/barcode-scanner";
@@ -86,9 +86,9 @@ export function PurchaseOrdersPageClient() {
     setError(null);
     try {
       const [poRes, supRes, invRes] = await Promise.all([
-        fetch(apiUrl("/api/purchase-orders", shop)),
-        fetch(apiUrl("/api/suppliers", shop)),
-        fetch(apiUrl("/api/inventory", shop)),
+        shopFetch("/api/purchase-orders", shop),
+        shopFetch("/api/suppliers", shop),
+        shopFetch("/api/inventory", shop),
       ]);
 
       if (!poRes.ok || !supRes.ok || !invRes.ok) {
@@ -127,7 +127,7 @@ export function PurchaseOrdersPageClient() {
     });
 
   const runForecast = async () => {
-    const res = await fetch(apiUrl("/api/purchase-orders", shop), {
+    const res = await shopFetch("/api/purchase-orders", shop, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -158,7 +158,7 @@ export function PurchaseOrdersPageClient() {
       setError("Select supplier, location, and run forecast first");
       return;
     }
-    const res = await fetch(apiUrl("/api/purchase-orders", shop), {
+    const res = await shopFetch("/api/purchase-orders", shop, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -177,7 +177,7 @@ export function PurchaseOrdersPageClient() {
   };
 
   const downloadPdf = async (id: string) => {
-    const res = await fetch(apiUrl(`/api/purchase-orders/${id}`, shop));
+    const res = await shopFetch(`/api/purchase-orders/${id}`, shop);
     if (!res.ok) {
       setError("Failed to load PO for PDF");
       return;
@@ -187,7 +187,7 @@ export function PurchaseOrdersPageClient() {
   };
 
   const sendPo = async (id: string) => {
-    const res = await fetch(apiUrl(`/api/purchase-orders/${id}`, shop), {
+    const res = await shopFetch(`/api/purchase-orders/${id}`, shop, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "send" }),
@@ -235,7 +235,7 @@ export function PurchaseOrdersPageClient() {
       return;
     }
 
-    const res = await fetch(apiUrl(`/api/purchase-orders/${selectedPo.id}`, shop), {
+    const res = await shopFetch(`/api/purchase-orders/${selectedPo.id}`, shop, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -268,7 +268,7 @@ export function PurchaseOrdersPageClient() {
 
   const handleScanReceive = async (barcode: string) => {
     if (!selectedPo) return;
-    const res = await fetch(apiUrl(`/api/purchase-orders/${selectedPo.id}`, shop), {
+    const res = await shopFetch(`/api/purchase-orders/${selectedPo.id}`, shop, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "scan", barcode, quantity: Number(scanQty) || 1 }),
@@ -352,7 +352,7 @@ export function PurchaseOrdersPageClient() {
         {
           content: "Force resync",
           onAction: async () => {
-            const res = await fetch(apiUrl("/api/sync/force", shop), { method: "POST" });
+            const res = await shopFetch("/api/sync/force", shop, { method: "POST" });
             if (!res.ok) {
               const data = await res.json().catch(() => ({}));
               setError(data.error ?? "Sync failed");

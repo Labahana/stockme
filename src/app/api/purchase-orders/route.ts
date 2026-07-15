@@ -6,6 +6,7 @@ import { computeForecastLines } from "@/lib/forecast";
 import { nextPoNumber } from "@/lib/po/number";
 import { csvResponse, toCsv } from "@/lib/export/csv";
 import type { ForecastMethod } from "@/lib/constants";
+import { assertForecastMethodAllowed } from "@/lib/billing/limits";
 
 export const dynamic = "force-dynamic";
 
@@ -89,12 +90,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     if (body.action === "forecast") {
-      // Plan-limit enforcement disabled for initial dev/testing.
-      // const method = body.method as ForecastMethod;
-      // const blocked = assertForecastMethodAllowed(ctx.store, method);
-      // if (blocked) {
-      //   return NextResponse.json({ error: blocked }, { status: 403 });
-      // }
+      const method = body.method as ForecastMethod;
+      const blocked = assertForecastMethodAllowed(ctx.store, method);
+      if (blocked) {
+        return NextResponse.json({ error: blocked }, { status: 403 });
+      }
       const lines = await computeForecastLines(
         ctx.shop,
         ctx.store.id,

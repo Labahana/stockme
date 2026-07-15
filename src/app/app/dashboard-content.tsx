@@ -14,7 +14,7 @@ import {
 } from "@shopify/polaris";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { apiUrl } from "@/lib/hooks/use-shop";
+import { apiUrl, shopFetch } from "@/lib/hooks/use-shop";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { LowStockAlert } from "@/components/inventory/LowStockAlert";
 
@@ -107,7 +107,7 @@ export default function DashboardContent() {
     setLoading(true);
     setError(null);
     try {
-      const invRes = await fetch(apiUrl("/api/inventory", shop));
+      const invRes = await shopFetch("/api/inventory", shop);
       if (!invRes.ok) {
         setError("Could not load inventory. Sync your catalog to get started.");
         setLoading(false);
@@ -122,8 +122,7 @@ export default function DashboardContent() {
         (inv.locations as Location[] | undefined)?.[0];
 
       if (primary?.id) {
-        const listRes = await fetch(
-          apiUrl(`/api/inventory?locationId=${primary.id}&stockStatus=low&limit=10`, shop),
+        const listRes = await shopFetch(`/api/inventory?locationId=${primary.id}&stockStatus=low&limit=10`, shop,
         );
         if (listRes.ok) {
           const list = await listRes.json();
@@ -133,8 +132,8 @@ export default function DashboardContent() {
       }
 
       const [poRes, stRes] = await Promise.all([
-        fetch(apiUrl("/api/purchase-orders", shop)),
-        fetch(apiUrl("/api/stocktakes", shop)),
+        shopFetch("/api/purchase-orders", shop),
+        shopFetch("/api/stocktakes", shop),
       ]);
 
       if (poRes.ok) {
@@ -168,7 +167,7 @@ export default function DashboardContent() {
     setError(null);
     setSyncMessage(null);
     try {
-      let res = await fetch(apiUrl("/api/sync/force", shop), { method: "POST" });
+      let res = await shopFetch("/api/sync/force", shop, { method: "POST" });
       let data = await res.json();
       if (!res.ok) {
         setError(data.error ?? "Sync failed");
@@ -177,7 +176,7 @@ export default function DashboardContent() {
       let guard = 0;
       while (data.hasMore && guard < 500) {
         setSyncMessage(data.message ?? "Syncing…");
-        res = await fetch(apiUrl("/api/sync/force?continue=1", shop), {
+        res = await shopFetch("/api/sync/force?continue=1", shop, {
           method: "POST",
         });
         data = await res.json();

@@ -11,7 +11,7 @@ import {
   Select,
   Text,
 } from "@shopify/polaris";
-import { apiUrl, useShop } from "@/lib/hooks/use-shop";
+import { apiUrl, useShop, shopFetch } from "@/lib/hooks/use-shop";
 import { usePlanFeatures } from "@/lib/hooks/use-plan";
 import { DataTableWithTotals } from "@/components/ui/DataTableWithTotals";
 
@@ -48,7 +48,7 @@ export function ReportsPageClient() {
   const runReport = async () => {
     setLoading(true);
     setError(null);
-    const res = await fetch(apiUrl(`/api/reports?type=${type}`, shop));
+    const res = await shopFetch(`/api/reports?type=${type}`, shop);
     const data = await res.json();
     if (!res.ok) {
       setError(data.error ?? "Report failed");

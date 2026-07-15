@@ -16,7 +16,7 @@ import {
   TextField,
   useIndexResourceState,
 } from "@shopify/polaris";
-import { apiUrl, useShop } from "@/lib/hooks/use-shop";
+import { apiUrl, useShop, shopFetch } from "@/lib/hooks/use-shop";
 
 type Supplier = {
   id: string;
@@ -85,7 +85,7 @@ export function SuppliersPageClient() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(apiUrl("/api/suppliers", shop));
+      const res = await shopFetch("/api/suppliers", shop);
       if (!res.ok) {
         setError("Failed to load suppliers");
         setLoading(false);
@@ -110,7 +110,7 @@ export function SuppliersPageClient() {
     });
 
   const createSupplier = async () => {
-    const res = await fetch(apiUrl("/api/suppliers", shop), {
+    const res = await shopFetch("/api/suppliers", shop, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -133,7 +133,7 @@ export function SuppliersPageClient() {
   const deleteSelected = async () => {
     let failures = 0;
     for (const id of selectedResources) {
-      const res = await fetch(apiUrl(`/api/suppliers/${id}`, shop), { method: "DELETE" });
+      const res = await shopFetch(`/api/suppliers/${id}`, shop, { method: "DELETE" });
       if (!res.ok) failures += 1;
     }
     if (failures > 0) setError(`${failures} supplier(s) could not be deleted`);
@@ -146,8 +146,8 @@ export function SuppliersPageClient() {
     setError(null);
 
     const [productsRes, invRes] = await Promise.all([
-      fetch(apiUrl(`/api/suppliers/${supplier.id}/products`, shop)),
-      fetch(apiUrl("/api/inventory", shop)),
+      shopFetch(`/api/suppliers/${supplier.id}/products`, shop),
+      shopFetch("/api/inventory", shop),
     ]);
     if (!productsRes.ok || !invRes.ok) {
       setError("Failed to load supplier products");
@@ -159,8 +159,7 @@ export function SuppliersPageClient() {
     const invData = await invRes.json();
     const primaryLocation = invData.locations?.[0]?.id;
     if (primaryLocation) {
-      const listRes = await fetch(
-        apiUrl(`/api/inventory?locationId=${primaryLocation}&limit=100`, shop),
+      const listRes = await shopFetch(`/api/inventory?locationId=${primaryLocation}&limit=100`, shop,
       );
       const listData = await listRes.json();
       setVariantOptions(
@@ -176,7 +175,7 @@ export function SuppliersPageClient() {
 
   const linkProduct = async () => {
     if (!activeSupplier || !linkForm.variantId) return;
-    const res = await fetch(apiUrl(`/api/suppliers/${activeSupplier.id}/products`, shop), {
+    const res = await shopFetch(`/api/suppliers/${activeSupplier.id}/products`, shop, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -198,8 +197,7 @@ export function SuppliersPageClient() {
 
   const unlinkProduct = async (variantId: string) => {
     if (!activeSupplier) return;
-    const res = await fetch(
-      apiUrl(`/api/suppliers/${activeSupplier.id}/products?variantId=${variantId}`, shop),
+    const res = await shopFetch(`/api/suppliers/${activeSupplier.id}/products?variantId=${variantId}`, shop,
       { method: "DELETE" },
     );
     if (!res.ok) {

@@ -16,7 +16,7 @@ import {
   TextField,
   useIndexResourceState,
 } from "@shopify/polaris";
-import { apiUrl, useShop } from "@/lib/hooks/use-shop";
+import { apiUrl, useShop, shopFetch } from "@/lib/hooks/use-shop";
 import { BarcodeScanner } from "@/components/barcode-scanner";
 
 type Stocktake = {
@@ -48,8 +48,8 @@ export function StocktakesPageClient() {
     setError(null);
     try {
       const [stRes, invRes] = await Promise.all([
-        fetch(apiUrl("/api/stocktakes", shop)),
-        fetch(apiUrl("/api/inventory", shop)),
+        shopFetch("/api/stocktakes", shop),
+        shopFetch("/api/inventory", shop),
       ]);
       if (!stRes.ok || !invRes.ok) {
         setError("Failed to load stocktakes");
@@ -81,7 +81,7 @@ export function StocktakesPageClient() {
     for (const id of selectedResources) {
       const st = stocktakes.find((s) => s.id === id);
       if (st?.status === "in_progress") {
-        const res = await fetch(apiUrl(`/api/stocktakes/${id}`, shop), {
+        const res = await shopFetch(`/api/stocktakes/${id}`, shop, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "complete" }),
@@ -94,7 +94,7 @@ export function StocktakesPageClient() {
   };
 
   const createStocktake = async () => {
-    const res = await fetch(apiUrl("/api/stocktakes", shop), {
+    const res = await shopFetch("/api/stocktakes", shop, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, locationId }),
@@ -110,7 +110,7 @@ export function StocktakesPageClient() {
   };
 
   const openStocktake = async (id: string) => {
-    const res = await fetch(apiUrl(`/api/stocktakes/${id}`, shop));
+    const res = await shopFetch(`/api/stocktakes/${id}`, shop);
     if (!res.ok) {
       setError("Failed to load stocktake");
       return;
@@ -132,7 +132,7 @@ export function StocktakesPageClient() {
 
   const recordCount = async (barcode?: string, variantId?: string) => {
     if (!activeId) return;
-    const res = await fetch(apiUrl(`/api/stocktakes/${activeId}`, shop), {
+    const res = await shopFetch(`/api/stocktakes/${activeId}`, shop, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -153,7 +153,7 @@ export function StocktakesPageClient() {
 
   const completeStocktake = async () => {
     if (!activeId) return;
-    const res = await fetch(apiUrl(`/api/stocktakes/${activeId}`, shop), {
+    const res = await shopFetch(`/api/stocktakes/${activeId}`, shop, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "complete" }),

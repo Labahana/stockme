@@ -1,67 +1,65 @@
 # Shopify App Store — Pre-Submission Checklist
 
 **App:** Stockme  
-**URL:** https://stockme.gentletap.co  
-**Review date:** July 9, 2026
+**URL:** https://stockme.gentletap.co (also `https://stocky-rho.vercel.app`)  
+**Review date:** July 14, 2026
 
 ## Ready ✅
 
 | Requirement | Status | Notes |
 |-------------|--------|-------|
-| OAuth / embedded app | ✅ | App Bridge + offline tokens in Supabase |
-| Shopify Billing API | ✅ | $15 / $29 / $39, 14-day trial, test mode via `SHOPIFY_BILLING_TEST` |
+| OAuth / embedded app | ✅ | App Bridge CDN + cookie-less offline OAuth |
+| Session tokens | ✅ | `shopFetch` sends Bearer idToken; `resolveShopContext` verifies JWT |
+| Shopify Billing API | ✅ | $15 / $29 / $39, 14-day trial, plan upgrade/downgrade in Settings |
+| BillingGuard + PlanGate | ✅ | Redirect to Settings when unpaid; feature gates by plan |
 | Webhook HMAC validation | ✅ | `/api/webhooks` |
 | APP_UNINSTALLED handler | ✅ | Deletes sessions |
 | GDPR webhooks | ✅ | `customers/data_request`, `customers/redact`, `shop/redact` |
 | Privacy policy URL | ✅ | `/privacy` |
 | Scoped data access | ✅ | Products, inventory, locations, orders (read) only |
-| Billing before feature access | ✅ | 402 gate + BillingGuard |
-| Stocky CSV importer | ✅ | `/app/import` — POs + suppliers |
+| GraphQL Admin API | ✅ | No REST Admin |
 
-## Submit this week ⚠️
+## Before submit ⚠️
 
 | Item | Action |
 |------|--------|
-| **App Store listing** | Create listing in Partner Dashboard — not submitted yet |
-| **App icon** | 1200×1200 PNG required |
-| **Screenshots** | 3–5 screenshots: inventory, PO forecast, import, stocktake scan |
-| **Listing copy** | Lead with "Stocky alternative" + Aug 31 deadline + $15/mo |
-| **Demo store** | Screencast URL + test credentials for reviewers |
-| **Support email** | support@stockme.gentletap.co — must respond within 2 business days |
+| **SHOPIFY_BILLING_TEST** | `true` for App Store review; `false` after approval for live charges |
+| **Vercel Shopify secrets** | Match new Partner Client ID / Secret |
+| **Legacy install flow** | Enabled in Partner app version + matching callback URL |
+| **App Store listing** | Icon 1200×1200, 3–5 screenshots, pricing copy |
+| **Demo store + screencast** | Reviewer credentials + short walkthrough |
+| **Support email** | support@stockme.gentletap.co — respond within 2 business days |
+| **Partner AI self-review** | Run in Distribution before submit |
 
 ## Production env (Vercel)
 
 ```
-NEXT_PUBLIC_APP_URL=https://stockme.gentletap.co
-SHOPIFY_API_KEY / SHOPIFY_API_SECRET
-SUPABASE_* keys
-INNGEST_* keys
-RESEND_API_KEY + RESEND_FROM_EMAIL
+NEXT_PUBLIC_APP_URL=https://stocky-rho.vercel.app
+NEXT_PUBLIC_SHOPIFY_API_KEY=<client id>
+SHOPIFY_API_KEY=<client id>
+SHOPIFY_API_SECRET=<client secret>
 SHOPIFY_BILLING_TEST=true   # during App Store review only
+SUPABASE_* / INNGEST_* / RESEND_* / CRON_SECRET
 ```
 
 ## Partner Dashboard config
 
-- **App URL:** `https://stockme.gentletap.co`
-- **Allowed redirection URL:** `https://stockme.gentletap.co/api/auth/callback`
+- **App URL:** `https://stocky-rho.vercel.app/app`
+- **Allowed redirection URL:** `https://stocky-rho.vercel.app/api/auth/callback`
 - **Embedded:** Yes
-- **GDPR webhooks:** Auto-registered on install (verify in Partner Dashboard after test install)
-
-## Known gaps (non-blocking for v1 submit)
-
-- No automated test suite (manual E2E recommended before submit)
-- List virtualization not implemented (pagination handles 5k SKUs)
-- Stocky CSV column names vary — importer uses flexible header mapping; document templates for merchants
+- **Use legacy install flow:** Yes (custom OAuth)
+- **GDPR webhooks:** Registered on install
 
 ## Pre-submit smoke test
 
-1. Install on dev store → billing approval → catalog sync
-2. Import sample PO + supplier CSV from `/api/import/stocky?sample=*`
-3. Create PO → send → partial receive → verify Shopify inventory
-4. Stocktake scan → complete → verify adjustment
-5. Uninstall → confirm sessions deleted
-6. Trigger test `shop/redact` from Partner Dashboard → confirm store row deleted
+1. Install on dev store → OAuth → choose plan → approve Shopify charge (test)
+2. Confirm unpaid path redirects to Settings
+3. Upgrade/downgrade plan in Settings
+4. Import sample PO + supplier CSV
+5. Create PO → send → receive → inventory updates
+6. Stocktake / transfer gated for Starter as expected
+7. Uninstall → sessions deleted; `shop/redact` clears store
 
 ## Reviewer notes (paste in submission)
 
-> Stockme replaces Shopify Stocky (sunsetting Aug 31, 2026) for POS Pro inventory workflows. Billing is via Shopify recurring charges. The app stores product/inventory/PO data only — no customer PII. GDPR webhooks implemented. Test charges enabled via SHOPIFY_BILLING_TEST.
+> Stockme replaces Shopify Stocky for POS Pro inventory workflows. Charges use the Shopify Billing API ($15/$29/$39, 14-day trial). Test charges enabled via SHOPIFY_BILLING_TEST. Embedded admin uses App Bridge session tokens. No customer PII stored. GDPR + APP_UNINSTALLED webhooks implemented. Privacy: https://stockme.gentletap.co/privacy

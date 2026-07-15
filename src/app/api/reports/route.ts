@@ -7,10 +7,10 @@ import {
   reportSupplierPerformance,
   reportValuation,
 } from "@/lib/reports";
-// import {
-//   assertBundleCostReports,
-//   assertSupplierPerformanceReport,
-// } from "@/lib/billing/limits";
+import {
+  assertBundleCostReports,
+  assertSupplierPerformanceReport,
+} from "@/lib/billing/limits";
 import { csvResponse, toCsv } from "@/lib/export/csv";
 
 export const dynamic = "force-dynamic";
@@ -28,16 +28,14 @@ export async function GET(request: NextRequest) {
     let result;
     switch (type) {
       case "valuation": {
-        // Plan-limit enforcement disabled for initial dev/testing.
-        // const blocked = assertBundleCostReports(ctx.store);
-        // if (blocked) return NextResponse.json({ error: blocked }, { status: 403 });
+        const blocked = assertBundleCostReports(ctx.store);
+        if (blocked) return NextResponse.json({ error: blocked }, { status: 403 });
         result = await reportValuation(ctx.store.id, locationId);
         break;
       }
       case "supplier_performance": {
-        // Plan-limit enforcement disabled for initial dev/testing.
-        // const blocked = assertSupplierPerformanceReport(ctx.store);
-        // if (blocked) return NextResponse.json({ error: blocked }, { status: 403 });
+        const blocked = assertSupplierPerformanceReport(ctx.store);
+        if (blocked) return NextResponse.json({ error: blocked }, { status: 403 });
         result = await reportSupplierPerformance(ctx.store.id);
         break;
       }

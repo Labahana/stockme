@@ -11,7 +11,7 @@ import {
   Text,
 } from "@shopify/polaris";
 import { CSVChunkReader } from "@/lib/csv-chunk-reader";
-import { apiUrl } from "@/lib/hooks/use-shop";
+import { apiUrl, shopFetch } from "@/lib/hooks/use-shop";
 
 type UploadState = {
   status: "idle" | "uploading" | "complete" | "error";
@@ -112,7 +112,7 @@ export function StreamingUploader({
       for (let i = 0; i < chunks.length; i++) {
         const chunk = chunks[i];
         try {
-          const response = await fetch(apiUrl("/api/import/chunk", shop), {
+          const response = await shopFetch("/api/import/chunk", shop, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({

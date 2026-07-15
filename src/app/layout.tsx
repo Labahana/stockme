@@ -25,11 +25,11 @@ export default function RootLayout({
         <meta name="shopify-api-key" content={apiKey} />
       </head>
       <body>
-        {children}
         <Script
           src="https://cdn.shopify.com/shopifycloud/app-bridge.js"
           strategy="beforeInteractive"
         />
+        {children}
       </body>
     </html>
   );

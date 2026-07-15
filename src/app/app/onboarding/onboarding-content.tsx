@@ -13,20 +13,29 @@ import {
 } from "@shopify/polaris";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { apiUrl } from "@/lib/hooks/use-shop";
-import { PLAN_TIERS } from "@/lib/constants";
+import { shopFetch, useHost } from "@/lib/hooks/use-shop";
+import { PLAN_TIERS, type PlanTier } from "@/lib/constants";
 
 export default function OnboardingPageClient() {
   const searchParams = useSearchParams();
   const shop = searchParams.get("shop") ?? "";
-  const qs = shop ? `?shop=${encodeURIComponent(shop)}` : "";
+  const host = useHost() || searchParams.get("host");
+  const qs = (() => {
+    const params = new URLSearchParams();
+    if (shop) params.set("shop", shop);
+    if (host) params.set("host", host);
+    const s = params.toString();
+    return s ? `?${s}` : "";
+  })();
   const [step, setStep] = useState<"welcome" | "plans">("welcome");
   const [stats, setStats] = useState({ products: 0, locations: 0, synced: false });
   const [syncing, setSyncing] = useState(false);
+  const [subscribing, setSubscribing] = useState<PlanTier | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!shop) return;
-    fetch(apiUrl("/api/inventory", shop))
+    shopFetch("/api/inventory", shop, host)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (!data) return;
@@ -37,15 +46,42 @@ export default function OnboardingPageClient() {
         });
       })
       .catch(() => undefined);
-  }, [shop]);
+  }, [shop, host]);
 
   const sync = async () => {
     setSyncing(true);
     try {
-      await fetch(apiUrl("/api/sync/force", shop), { method: "POST" });
+      await shopFetch("/api/sync/force", shop, host, { method: "POST" });
       setStats((s) => ({ ...s, synced: true }));
     } finally {
       setSyncing(false);
+    }
+  };
+
+  const selectPlan = async (plan: PlanTier) => {
+    setSubscribing(plan);
+    setError(null);
+    try {
+      const res = await shopFetch("/api/billing", shop, host, {
+        method: "POST",
+        body: JSON.stringify({ plan }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Could not start Shopify billing");
+        return;
+      }
+      if (data.billingBypassed) {
+        window.location.assign(`/app${qs}`);
+        return;
+      }
+      if (data.confirmationUrl) {
+        window.open(data.confirmationUrl, "_top");
+        return;
+      }
+      window.location.assign(`/app/settings${qs}${qs ? "&" : "?"}billing=confirmed`);
+    } finally {
+      setSubscribing(null);
     }
   };
 
@@ -81,9 +117,7 @@ export default function OnboardingPageClient() {
                   </Text>
                   <Banner tone="success">
                     <List type="bullet">
-                      <List.Item>
-                        Connected to {shop || "your Shopify store"}
-                      </List.Item>
+                      <List.Item>Connected to {shop || "your Shopify store"}</List.Item>
                       <List.Item>
                         {stats.synced ? "Catalog synced" : "Ready to sync products"}
                       </List.Item>
@@ -101,8 +135,8 @@ export default function OnboardingPageClient() {
                   <Button fullWidth variant="primary" onClick={() => setStep("plans")}>
                     Start 14-Day Free Trial
                   </Button>
-                  <Button url={`/app${qs}`} variant="plain">
-                    Skip to Dashboard
+                  <Button url={`/app/settings${qs}${qs ? "&" : "?"}billing=required`} variant="plain">
+                    Choose a plan in Settings
                   </Button>
                 </BlockStack>
               </Card>
@@ -117,8 +151,15 @@ export default function OnboardingPageClient() {
     <Page title="Choose Your Plan">
       <Layout>
         <Layout.Section>
+          {error && (
+            <div style={{ marginBottom: 16 }}>
+              <Banner tone="critical" onDismiss={() => setError(null)}>
+                {error}
+              </Banner>
+            </div>
+          )}
           <InlineGrid columns={{ xs: 1, md: 3 }} gap="400">
-            {(Object.keys(PLAN_TIERS) as Array<keyof typeof PLAN_TIERS>).map((key) => {
+            {(Object.keys(PLAN_TIERS) as PlanTier[]).map((key) => {
               const tier = PLAN_TIERS[key];
               const popular = key === "growth";
               return (
@@ -142,14 +183,18 @@ export default function OnboardingPageClient() {
                       </List.Item>
                       <List.Item>Purchase orders & stock takes</List.Item>
                       {key !== "starter" && <List.Item>Barcode receiving & transfers</List.Item>}
-                      {key === "pro" && <List.Item>Bundle cost correction & multi-shipment invoices</List.Item>}
+                      {key === "pro" && (
+                        <List.Item>Bundle cost correction & multi-shipment invoices</List.Item>
+                      )}
                     </List>
                     <Button
                       variant={popular ? "primary" : "secondary"}
-                      url={`/app${qs}`}
                       fullWidth
+                      loading={subscribing === key}
+                      disabled={Boolean(subscribing)}
+                      onClick={() => selectPlan(key)}
                     >
-                      Select
+                      Subscribe with Shopify
                     </Button>
                   </BlockStack>
                 </Card>
@@ -158,8 +203,8 @@ export default function OnboardingPageClient() {
           </InlineGrid>
           <div style={{ marginTop: 16 }}>
             <Banner tone="info">
-              Not sure? Start with Growth. You can change anytime. Billing is currently
-              disabled for testing — selecting a plan continues to the dashboard.
+              Not sure? Start with Growth. All plans include a 14-day trial. You can upgrade or
+              downgrade anytime in Settings — billing is handled by Shopify.
             </Banner>
           </div>
         </Layout.Section>

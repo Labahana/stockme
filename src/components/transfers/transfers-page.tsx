@@ -14,7 +14,7 @@ import {
   TextField,
   useIndexResourceState,
 } from "@shopify/polaris";
-import { apiUrl, useShop } from "@/lib/hooks/use-shop";
+import { apiUrl, useShop, shopFetch } from "@/lib/hooks/use-shop";
 import { usePlanFeatures } from "@/lib/hooks/use-plan";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { PlanGate } from "@/components/ui/PlanGate";
@@ -56,8 +56,8 @@ export function TransfersPageClient() {
     setError(null);
     try {
       const [trRes, invRes] = await Promise.all([
-        fetch(apiUrl("/api/transfers", shop)),
-        fetch(apiUrl("/api/inventory", shop)),
+        shopFetch("/api/transfers", shop),
+        shopFetch("/api/inventory", shop),
       ]);
       if (!trRes.ok || !invRes.ok) {
         setError("Failed to load transfers");
@@ -70,8 +70,7 @@ export function TransfersPageClient() {
       setLocations(invData.locations ?? []);
       const primary = invData.locations?.[0]?.id;
       if (primary) {
-        const listRes = await fetch(
-          apiUrl(`/api/inventory?locationId=${primary}&limit=100`, shop),
+        const listRes = await shopFetch(`/api/inventory?locationId=${primary}&limit=100`, shop,
         );
         const listData = await listRes.json();
         setVariantOptions(listData.items ?? []);
@@ -106,7 +105,7 @@ export function TransfersPageClient() {
       setError("Select a variant to transfer");
       return;
     }
-    const res = await fetch(apiUrl("/api/transfers", shop), {
+    const res = await shopFetch("/api/transfers", shop, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -135,7 +134,7 @@ export function TransfersPageClient() {
     });
 
   const updateTransfer = async (id: string, action: string) => {
-    const res = await fetch(apiUrl(`/api/transfers/${id}`, shop), {
+    const res = await shopFetch(`/api/transfers/${id}`, shop, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action }),

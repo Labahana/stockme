@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { PLAN_TIERS, type PlanTier } from "@/lib/constants";
-import { apiUrl, useShop } from "@/lib/hooks/use-shop";
+import { shopFetch, useHost, useShop } from "@/lib/hooks/use-shop";
 
 export type PlanFeatures = {
   planTier: PlanTier;
@@ -20,21 +20,25 @@ export type PlanFeatures = {
 
 export function usePlanFeatures(): PlanFeatures {
   const shop = useShop();
+  const host = useHost();
   const [planTier, setPlanTier] = useState<PlanTier>("starter");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(apiUrl("/api/billing", shop))
+    if (!shop) {
+      setLoading(false);
+      return;
+    }
+    shopFetch("/api/billing", shop, host)
       .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
       .then((d) => {
         setPlanTier(d.planTier ?? "starter");
         setLoading(false);
       })
       .catch(() => {
-        // Keep loading=false so UI can render with starter defaults; tier will retry on remount.
         setLoading(false);
       });
-  }, [shop]);
+  }, [shop, host]);
 
   const tier = PLAN_TIERS[planTier];
   const isGrowthPlus = planTier !== "starter";
