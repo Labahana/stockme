@@ -57,7 +57,7 @@ export function SidebarNav({
   return (
     <aside className={`stockme-sidebar${open ? " is-open" : ""}`}>
       <div className="stockme-sidebar__brand">
-        <StockmeMark size={26} />
+        <StockmeMark size={30} />
         <span className="label">{APP_NAME}</span>
       </div>
 

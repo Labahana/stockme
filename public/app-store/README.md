@@ -28,8 +28,11 @@
 
 | File | Use in Partner Dashboard | Spec |
 |------|--------------------------|------|
-| `stockme-app-icon-1200.png` | **App icon** | 1200×1200 — layered cube mark on teal |
-| `stockme-favicon.png` | Optional small logo / favicon source | Same mark as app icon |
+| `stockme-app-icon-1200.png` | **App icon** | 1200×1200 — 3-layer isometric mark |
+| `stockme-app-icon.svg` | Source for app icon | Same mark, vector |
+| `stockme-favicon.png` | Favicon / small logo | Same mark as app icon |
+| `../brand/stockme-mark.svg` | Site mark (icon only) | Transparent SVG |
+| `../brand/stockme-logo.svg` | Site logo (icon + Stockme) | Transparent SVG |
 | `stockme-feature-graphic.png` | Feature / gallery hero | 16:9 |
 | `stockme-screenshot-inventory.png` | Gallery screenshot 1 | 16:9 |
 | `stockme-screenshot-purchase-orders.png` | Gallery screenshot 2 | 16:9 |

@@ -112,7 +112,7 @@ export default function HomePage({
           </Link>
           <a
             href="mailto:support@stockme.gentletap.co"
-            className="text-sm text-[#4a6b62] transition hover:text-[#0a5c4c]"
+            className="text-sm text-[#4a6b62] transition hover:text-[#0D7377]"
           >
             support@stockme.gentletap.co
           </a>
@@ -147,7 +147,7 @@ export default function HomePage({
             {installHref ? (
               <Link
                 href={installHref}
-                className="inline-flex rounded-xl bg-[#008060] px-7 py-3 text-base font-semibold text-white shadow-[0_10px_24px_-8px_rgba(0,128,96,0.65)] transition hover:bg-[#004c3f]"
+                  className="inline-flex rounded-xl bg-[#0D7377] px-7 py-3 text-base font-semibold text-white shadow-[0_10px_24px_-8px_rgba(13,115,119,0.65)] transition hover:bg-[#08555A]"
               >
                 Install on {shop}
               </Link>
@@ -158,7 +158,7 @@ export default function HomePage({
             )}
             <Link
               href="/privacy"
-              className="text-sm font-medium text-[#0a5c4c] underline-offset-4 hover:underline"
+              className="text-sm font-medium text-[#0D7377] underline-offset-4 hover:underline"
             >
               Privacy policy
             </Link>
@@ -166,7 +166,7 @@ export default function HomePage({
         </div>
       </section>
 
-      <section className="bg-[#0a5c4c] text-white">
+      <section className="bg-[#0D7377] text-white">
         <div className="mx-auto grid max-w-6xl gap-0 sm:grid-cols-2 lg:grid-cols-4">
           {FEATURES.map((feature, i) => (
             <div
@@ -204,7 +204,7 @@ export default function HomePage({
                   height={750}
                   className="h-auto w-full"
                 />
-                <figcaption className="border-t border-[#e8f0ed] px-4 py-3 text-sm font-medium text-[#0a5c4c]">
+                <figcaption className="border-t border-[#e8f0ed] px-4 py-3 text-sm font-medium text-[#0D7377]">
                   {shot.label}
                 </figcaption>
               </figure>
@@ -242,13 +242,13 @@ export default function HomePage({
         <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <StockmeLogo size="sm" />
           <div className="text-sm text-[#5a736b]">
-            <Link href="/privacy" className="underline-offset-4 hover:text-[#0a5c4c] hover:underline">
+            <Link href="/privacy" className="underline-offset-4 hover:text-[#0D7377] hover:underline">
               Privacy policy
             </Link>
             {" · "}
             <a
               href="mailto:support@stockme.gentletap.co"
-              className="underline-offset-4 hover:text-[#0a5c4c] hover:underline"
+              className="underline-offset-4 hover:text-[#0D7377] hover:underline"
             >
               Support
             </a>

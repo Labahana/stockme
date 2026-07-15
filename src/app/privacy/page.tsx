@@ -16,7 +16,7 @@ export default function PrivacyPage() {
           </Link>
           <a
             href="mailto:support@stockme.gentletap.co"
-            className="text-sm text-[#4a6b62] hover:text-[#0a5c4c]"
+            className="text-sm text-[#4a6b62] hover:text-[#0D7377]"
           >
             Support
           </a>
@@ -72,7 +72,7 @@ export default function PrivacyPage() {
           <h2 className="pt-4 text-xl font-semibold text-[#1a2e28]">Contact</h2>
           <p>
             Questions or GDPR requests:{" "}
-            <a className="text-[#008060] underline" href="mailto:support@stockme.gentletap.co">
+            <a className="text-[#0D7377] underline" href="mailto:support@stockme.gentletap.co">
               support@stockme.gentletap.co
             </a>
           </p>

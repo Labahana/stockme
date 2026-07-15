@@ -6,17 +6,14 @@ const SIZES: Record<
   Size,
   { mark: number; text: string; gap: string }
 > = {
-  sm: { mark: 22, text: "text-base", gap: "gap-2" },
-  md: { mark: 28, text: "text-lg", gap: "gap-2.5" },
-  lg: { mark: 36, text: "text-2xl", gap: "gap-3" },
+  sm: { mark: 28, text: "text-base", gap: "gap-2" },
+  md: { mark: 34, text: "text-lg", gap: "gap-2.5" },
+  lg: { mark: 44, text: "text-2xl", gap: "gap-3" },
 };
 
-/**
- * Layered isometric diamond mark from stockme-feature-graphic.png
- * (three stacked hollow frames; bottom opens into a soft V).
- */
+/** 3-layer isometric stock mark (icon only). */
 export function StockmeMark({
-  size = 28,
+  size = 34,
   className = "",
 }: {
   size?: number;
@@ -24,43 +21,37 @@ export function StockmeMark({
 }) {
   return (
     <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 512 512"
       width={size}
       height={size}
-      viewBox="0 0 40 44"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
       className={className}
       aria-hidden
     >
-      <path
-        d="M20 3L34 10.5L20 18L6 10.5L20 3Z"
-        stroke="currentColor"
-        strokeWidth="2.35"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M20 13L34 20.5L20 28L6 20.5L20 13Z"
-        stroke="currentColor"
-        strokeWidth="2.35"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M6 30.5L20 23L34 30.5"
-        stroke="currentColor"
-        strokeWidth="2.35"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M9.5 33L20 27.5L30.5 33L20 38.5L9.5 33Z"
-        stroke="currentColor"
-        strokeWidth="2.35"
-        strokeLinejoin="round"
-      />
+      <rect width="512" height="512" fill="none" />
+      <g transform="translate(256, 276)">
+        {/* Layer 1 (bottom) */}
+        <polygon points="-65,52 0,91 65,52 0,13" fill="#0D7377" />
+        <polygon points="0,91 65,52 65,-23 0,16" fill="#08555A" />
+        {/* White separator 1 */}
+        <polygon points="-65,13 0,52 65,13 0,-26" fill="#FFFFFF" />
+        <polygon points="0,52 65,13 65,-22 0,17" fill="#E6F5F5" />
+        {/* Layer 2 (middle) */}
+        <polygon points="-65,-26 0,13 65,-26 0,-65" fill="#0D7377" />
+        <polygon points="0,13 65,-26 65,-101 0,-62" fill="#08555A" />
+        {/* White separator 2 */}
+        <polygon points="-65,-65 0,-26 65,-65 0,-104" fill="#FFFFFF" />
+        <polygon points="0,-26 65,-65 65,-100 0,-61" fill="#E6F5F5" />
+        {/* Layer 3 (top) */}
+        <polygon points="-65,-104 0,-65 65,-104 0,-143" fill="#0D7377" />
+        <polygon points="0,-65 65,-104 65,-179 0,-140" fill="#08555A" />
+        <polygon points="0,-143 65,-104 0,-65 -65,-104" fill="#14A085" />
+      </g>
     </svg>
   );
 }
 
+/** Icon + Stockme wordmark for headers / footers. */
 export function StockmeLogo({
   size = "md",
   className = "",
@@ -74,11 +65,13 @@ export function StockmeLogo({
 
   return (
     <span
-      className={`inline-flex items-center ${s.gap} text-[#0a5c4c] ${className}`}
+      className={`inline-flex items-center ${s.gap} text-[#0D7377] ${className}`}
     >
       <StockmeMark size={s.mark} />
       {showWordmark ? (
-        <span className={`${s.text} font-bold tracking-tight`}>{APP_NAME}</span>
+        <span className={`${s.text} font-semibold tracking-tight`}>
+          {APP_NAME}
+        </span>
       ) : null}
     </span>
   );

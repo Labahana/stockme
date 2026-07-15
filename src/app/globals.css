@@ -6,9 +6,9 @@
   --p-text-subdued: #6d7175;
   --p-border: #c9cccf;
   --p-border-subdued: #e1e3e5;
-  --stockme-primary: #008060;
-  --stockme-primary-hover: #004c3f;
-  --stockme-primary-subdued: #e3f1df;
+  --stockme-primary: #0d7377;
+  --stockme-primary-hover: #08555a;
+  --stockme-primary-subdued: #e6f5f5;
   --p-critical: #d72c0d;
   --p-warning: #b98900;
   --p-success: #008060;
@@ -95,7 +95,7 @@ body {
   padding: 16px 16px 12px;
   font-weight: 600;
   font-size: 16px;
-  color: #0a5c4c;
+  color: #0d7377;
   border-bottom: 1px solid var(--p-border-subdued);
 }
 

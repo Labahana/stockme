@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Soft brand field so full-color mark stays true to SVG -->
+  <rect width="512" height="512" fill="#F4FBFA"/>
+  <g transform="translate(256, 276) scale(1.35)">
+    <polygon points="-65,52 0,91 65,52 0,13" fill="#0D7377"/>
+    <polygon points="0,91 65,52 65,-23 0,16" fill="#08555A"/>
+    <polygon points="-65,13 0,52 65,13 0,-26" fill="#FFFFFF"/>
+    <polygon points="0,52 65,13 65,-22 0,17" fill="#E6F5F5"/>
+    <polygon points="-65,-26 0,13 65,-26 0,-65" fill="#0D7377"/>
+    <polygon points="0,13 65,-26 65,-101 0,-62" fill="#08555A"/>
+    <polygon points="-65,-65 0,-26 65,-65 0,-104" fill="#FFFFFF"/>
+    <polygon points="0,-26 65,-65 65,-100 0,-61" fill="#E6F5F5"/>
+    <polygon points="-65,-104 0,-65 65,-104 0,-143" fill="#0D7377"/>
+    <polygon points="0,-65 65,-104 65,-179 0,-140" fill="#08555A"/>
+    <polygon points="0,-143 65,-104 0,-65 -65,-104" fill="#14A085"/>
+  </g>
+</svg>

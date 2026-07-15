@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 512" width="800" height="512">
+  <rect width="800" height="512" fill="none"/>
+  <g transform="translate(140, 256) scale(0.55)">
+    <polygon points="-65,52 0,91 65,52 0,13" fill="#0D7377"/>
+    <polygon points="0,91 65,52 65,-23 0,16" fill="#08555A"/>
+    <polygon points="-65,13 0,52 65,13 0,-26" fill="#FFFFFF"/>
+    <polygon points="0,52 65,13 65,-22 0,17" fill="#E6F5F5"/>
+    <polygon points="-65,-26 0,13 65,-26 0,-65" fill="#0D7377"/>
+    <polygon points="0,13 65,-26 65,-101 0,-62" fill="#08555A"/>
+    <polygon points="-65,-65 0,-26 65,-65 0,-104" fill="#FFFFFF"/>
+    <polygon points="0,-26 65,-65 65,-100 0,-61" fill="#E6F5F5"/>
+    <polygon points="-65,-104 0,-65 65,-104 0,-143" fill="#0D7377"/>
+    <polygon points="0,-65 65,-104 65,-179 0,-140" fill="#08555A"/>
+    <polygon points="0,-143 65,-104 0,-65 -65,-104" fill="#14A085"/>
+  </g>
+  <text x="280" y="310" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-weight="600" font-size="140" fill="#0D7377">Stockme</text>
+</svg>

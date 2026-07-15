@@ -8,7 +8,10 @@ export const metadata: Metadata = {
   description:
     "Stocky rebuilt — inventory management, purchase orders, and forecasting for Shopify POS Pro merchants.",
   icons: {
-    icon: [{ url: "/app-store/stockme-favicon.png", type: "image/png" }],
+    icon: [
+      { url: "/brand/stockme-mark.svg", type: "image/svg+xml" },
+      { url: "/app-store/stockme-favicon.png", type: "image/png" },
+    ],
     apple: [{ url: "/app-store/stockme-app-icon-1200.png" }],
   },
   other: {
