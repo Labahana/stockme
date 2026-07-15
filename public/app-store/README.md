@@ -28,8 +28,8 @@
 
 | File | Use in Partner Dashboard | Spec |
 |------|--------------------------|------|
-| `stockme-app-icon-1200.png` | **App icon** | Square ~1200×1200 |
-| `stockme-favicon.png` | Optional small logo / favicon source | Square |
+| `stockme-app-icon-1200.png` | **App icon** | 1200×1200 — layered cube mark on teal |
+| `stockme-favicon.png` | Optional small logo / favicon source | Same mark as app icon |
 | `stockme-feature-graphic.png` | Feature / gallery hero | 16:9 |
 | `stockme-screenshot-inventory.png` | Gallery screenshot 1 | 16:9 |
 | `stockme-screenshot-purchase-orders.png` | Gallery screenshot 2 | 16:9 |
