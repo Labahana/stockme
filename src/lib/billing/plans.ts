@@ -1,5 +1,5 @@
 import { getShopify } from "@/lib/shopify";
-import { type PlanTier } from "@/lib/constants";
+import { BILLING_DISABLED_FOR_DEMO, type PlanTier } from "@/lib/constants";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Session } from "@shopify/shopify-api";
 
@@ -44,8 +44,10 @@ function billingApiUnavailable(error: unknown): boolean {
   return billingIsTest() && isCustomAppBillingError(error);
 }
 
-/** True when billing enforcement is relaxed for dev/custom-app testing. */
+/** True when billing enforcement is relaxed (demo / custom-app testing). */
 export function billingBypassEnabled(): boolean {
+  // DEMO: unlock the whole app without Shopify subscription
+  if (BILLING_DISABLED_FOR_DEMO) return true;
   return process.env.SHOPIFY_BILLING_CUSTOM_APP === "true";
 }
 

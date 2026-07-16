@@ -8,6 +8,8 @@ import {
 import { syncStoreBilling } from "@/lib/billing/plans";
 import { completeOfflineOAuth } from "@/lib/shopify/oauth";
 import { inngest } from "@/lib/inngest/client";
+import { BILLING_DISABLED_FOR_DEMO } from "@/lib/constants";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -18,10 +20,23 @@ export async function GET(request: NextRequest) {
     await storeSession(session);
     const store = await ensureStoreRecord(shop);
 
-    try {
-      await syncStoreBilling(session, store.id);
-    } catch (billingError) {
-      console.error("Billing sync after OAuth failed:", billingError);
+    // DEMO: mark store active/pro so API checks pass without a subscription
+    if (BILLING_DISABLED_FOR_DEMO) {
+      try {
+        const supabase = createAdminClient();
+        await supabase
+          .from("stores")
+          .update({ billing_status: "active", plan_tier: "pro" })
+          .eq("id", store.id);
+      } catch (e) {
+        console.error("Demo billing activate failed:", e);
+      }
+    } else {
+      try {
+        await syncStoreBilling(session, store.id);
+      } catch (billingError) {
+        console.error("Billing sync after OAuth failed:", billingError);
+      }
     }
 
     try {
@@ -44,9 +59,13 @@ export async function GET(request: NextRequest) {
     }
 
     const host = request.nextUrl.searchParams.get("host");
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://stockme.gentletap.co";
+    // DEMO: skip billing=required redirect — go straight into the app
     const redirectUrl = host
       ? await shopify.auth.buildEmbeddedAppUrl(host)
-      : `${process.env.NEXT_PUBLIC_APP_URL ?? "https://stockme.gentletap.co"}/app/settings?shop=${encodeURIComponent(shop)}&billing=required`;
+      : BILLING_DISABLED_FOR_DEMO
+        ? `${appUrl}/app?shop=${encodeURIComponent(shop)}`
+        : `${appUrl}/app/settings?shop=${encodeURIComponent(shop)}&billing=required`;
 
     return NextResponse.redirect(redirectUrl);
   } catch (error) {

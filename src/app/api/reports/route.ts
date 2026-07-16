@@ -11,6 +11,7 @@ import {
   assertSupplierPerformanceReport,
 } from "@/lib/billing/limits";
 import { csvResponse, toCsv } from "@/lib/export/csv";
+import { BILLING_DISABLED_FOR_DEMO } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -24,13 +25,12 @@ export async function GET(request: NextRequest) {
     const locationId = request.nextUrl.searchParams.get("locationId") ?? undefined;
     const days = Number(request.nextUrl.searchParams.get("days") ?? "30");
     const exportCsv = request.nextUrl.searchParams.get("export") === "csv";
-    // Bundle-aware valuation is Pro; basic valuation is available on all plans.
+    // Bundle-aware valuation is Pro; in demo all plans get bundle costs.
     const useBundleCosts =
-      type === "valuation"
+      BILLING_DISABLED_FOR_DEMO ||
+      (type === "valuation" || type === "cogs"
         ? ctx.store.plan_tier === "pro"
-        : type === "cogs"
-          ? ctx.store.plan_tier === "pro"
-          : true;
+        : true);
 
     let result;
     switch (type) {

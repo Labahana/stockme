@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { loadOfflineSession, sanitizeShop } from "@/lib/shopify";
 import { billingBypassEnabled } from "@/lib/billing/plans";
+import { BILLING_DISABLED_FOR_DEMO } from "@/lib/constants";
 import {
   bearerFromRequest,
   shopFromSessionToken,
@@ -55,8 +56,6 @@ async function resolveShopDomain(
     return queryShop;
   }
 
-  // Embedded admin requests must include a session token (App Bridge idToken).
-  // Allow query-only in non-production for local scripts, or when explicitly enabled.
   const allowQueryOnly =
     process.env.STOCKME_ALLOW_QUERY_SHOP_AUTH === "true" ||
     process.env.NODE_ENV === "development";
@@ -97,6 +96,18 @@ export async function resolveShopContext(
   if (error) throw error;
   if (!store) {
     return NextResponse.json({ error: "Store record not found" }, { status: 404 });
+  }
+
+  // DEMO: treat every store as active Pro
+  if (BILLING_DISABLED_FOR_DEMO) {
+    if (store.billing_status !== "active" || store.plan_tier !== "pro") {
+      await supabase
+        .from("stores")
+        .update({ billing_status: "active", plan_tier: "pro" })
+        .eq("id", store.id);
+      store.billing_status = "active";
+      store.plan_tier = "pro";
+    }
   }
 
   if (

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PLAN_TIERS, type PlanTier } from "@/lib/constants";
+import { BILLING_DISABLED_FOR_DEMO, PLAN_TIERS, type PlanTier } from "@/lib/constants";
 import { shopFetch, useHost, useShop } from "@/lib/hooks/use-shop";
 
 export type PlanFeatures = {
@@ -21,10 +21,18 @@ export type PlanFeatures = {
 export function usePlanFeatures(): PlanFeatures {
   const shop = useShop();
   const host = useHost();
-  const [planTier, setPlanTier] = useState<PlanTier>("starter");
-  const [loading, setLoading] = useState(true);
+  // DEMO: treat every merchant as Pro with all features unlocked
+  const [planTier, setPlanTier] = useState<PlanTier>(
+    BILLING_DISABLED_FOR_DEMO ? "pro" : "starter",
+  );
+  const [loading, setLoading] = useState(!BILLING_DISABLED_FOR_DEMO);
 
   useEffect(() => {
+    if (BILLING_DISABLED_FOR_DEMO) {
+      setPlanTier("pro");
+      setLoading(false);
+      return;
+    }
     if (!shop) {
       setLoading(false);
       return;
@@ -41,8 +49,8 @@ export function usePlanFeatures(): PlanFeatures {
   }, [shop, host]);
 
   const tier = PLAN_TIERS[planTier];
-  const isGrowthPlus = planTier !== "starter";
-  const isPro = planTier === "pro";
+  const isGrowthPlus = BILLING_DISABLED_FOR_DEMO || planTier !== "starter";
+  const isPro = BILLING_DISABLED_FOR_DEMO || planTier === "pro";
 
   return {
     planTier,
@@ -54,7 +62,7 @@ export function usePlanFeatures(): PlanFeatures {
     canPartialInvoice: isPro,
     canBundleValuation: isPro,
     canSupplierPerformance: isGrowthPlus,
-    maxSkus: tier.maxSkus,
-    maxLocations: tier.locations,
+    maxSkus: BILLING_DISABLED_FOR_DEMO ? null : tier.maxSkus,
+    maxLocations: BILLING_DISABLED_FOR_DEMO ? null : tier.locations,
   };
 }

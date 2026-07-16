@@ -1,5 +1,11 @@
 export const APP_NAME = "Stockme";
 
+/**
+ * DEMO MODE — billing off, all plan features unlocked.
+ * Set to `false` before App Store launch / live charging.
+ */
+export const BILLING_DISABLED_FOR_DEMO = true;
+
 export const SHOPIFY_SCOPES = [
   "read_products",
   "write_products",

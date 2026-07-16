@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { isNextResponse, resolveShopContext } from "@/lib/api/shop-context";
 import { loadOfflineSession } from "@/lib/shopify";
 import {
+  billingBypassEnabled,
   requestSubscription,
   syncStoreBilling,
 } from "@/lib/billing/plans";
 import { countShopLocations, countShopVariants, getPlanLimits } from "@/lib/billing/limits";
-import type { PlanTier } from "@/lib/constants";
-import { PLAN_TIERS } from "@/lib/constants";
+import { BILLING_DISABLED_FOR_DEMO, PLAN_TIERS, type PlanTier } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +15,23 @@ export async function GET(request: NextRequest) {
   try {
     const ctx = await resolveShopContext(request, { skipBilling: true });
     if (isNextResponse(ctx)) return ctx;
+
+    // DEMO: always report active Pro — no Shopify subscription required
+    if (BILLING_DISABLED_FOR_DEMO || billingBypassEnabled()) {
+      return NextResponse.json({
+        planTier: "pro" as PlanTier,
+        billingStatus: "active",
+        hasActivePayment: true,
+        billingBypassed: true,
+        provider: "shopify",
+        plans: PLAN_TIERS,
+        usage: {
+          skuCount: await countShopVariants(ctx.store.id),
+          locationCount: await countShopLocations(ctx.store.id),
+          limits: { name: "Pro", price: 39, maxSkus: null, locations: null },
+        },
+      });
+    }
 
     const session = await loadOfflineSession(ctx.shop);
     let billing: {
@@ -55,6 +72,19 @@ export async function POST(request: NextRequest) {
   try {
     const ctx = await resolveShopContext(request, { skipBilling: true });
     if (isNextResponse(ctx)) return ctx;
+
+    // DEMO: pretend subscribe succeeded — do not call Shopify Billing API
+    if (BILLING_DISABLED_FOR_DEMO) {
+      const body = (await request.json().catch(() => ({}))) as { plan?: PlanTier };
+      return NextResponse.json({
+        success: true,
+        billingBypassed: true,
+        planTier: body.plan && PLAN_TIERS[body.plan] ? body.plan : "pro",
+        billingStatus: "active",
+        hasActivePayment: true,
+        message: "Demo mode: billing disabled — all features unlocked.",
+      });
+    }
 
     const { plan } = (await request.json()) as { plan: PlanTier };
     if (!plan || !PLAN_TIERS[plan]) {
