@@ -1,5 +1,4 @@
 import { Metadata } from "next";
-import Script from "next/script";
 import { APP_NAME } from "@/lib/constants";
 import "./globals.css";
 
@@ -29,15 +28,17 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        {/* Required by App Bridge CDN — must appear before the App Bridge script */}
         <meta name="shopify-api-key" content={apiKey} />
+        {/*
+          Shopify requires App Bridge as the FIRST <script> in the document,
+          with no async / defer / type=module. next/script adds async and breaks
+          window.shopify.idToken() → every API call 401s.
+        */}
+        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
+        <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js" />
       </head>
-      <body>
-        <Script
-          src="https://cdn.shopify.com/shopifycloud/app-bridge.js"
-          strategy="beforeInteractive"
-        />
-        {children}
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
