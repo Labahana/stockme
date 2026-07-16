@@ -61,14 +61,20 @@ export async function POST(request: NextRequest) {
 
     if (error) throw error;
 
-    const { data: levels } = await supabase
-      .from("inventory_levels")
-      .select("variant_id, available")
-      .eq("shop_id", ctx.store.id)
-      .eq("location_id", parsed.data.locationId);
+    // Page inventory levels so large locations don't timeout
+    const PAGE = 1000;
+    let from = 0;
+    for (;;) {
+      const { data: levels, error: levelsError } = await supabase
+        .from("inventory_levels")
+        .select("variant_id, available")
+        .eq("shop_id", ctx.store.id)
+        .eq("location_id", parsed.data.locationId)
+        .range(from, from + PAGE - 1);
+      if (levelsError) throw levelsError;
+      if (!levels?.length) break;
 
-    if (levels?.length) {
-      await supabase.from("stocktake_lines").insert(
+      const { error: linesError } = await supabase.from("stocktake_lines").insert(
         levels.map((l) => ({
           shop_id: ctx.store.id,
           stocktake_id: stocktake.id,
@@ -76,6 +82,9 @@ export async function POST(request: NextRequest) {
           system_qty: l.available,
         })),
       );
+      if (linesError) throw linesError;
+      if (levels.length < PAGE) break;
+      from += PAGE;
     }
 
     return NextResponse.json({ stocktake });

@@ -17,8 +17,10 @@ import {
 } from "@shopify/polaris";
 import { useParams, useSearchParams } from "next/navigation";
 import { apiUrl, shopFetch } from "@/lib/hooks/use-shop";
+import { usePlanFeatures } from "@/lib/hooks/use-plan";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { BarcodeScannerModal } from "@/components/ui/BarcodeScannerModal";
+import { UpgradeBanner } from "@/components/upgrade-banner";
 
 type Line = {
   id: string;
@@ -60,9 +62,11 @@ export function PODetail() {
   const shop = searchParams.get("shop") ?? "";
   const qs = shop ? `?shop=${encodeURIComponent(shop)}` : "";
   const id = params.id;
+  const plan = usePlanFeatures();
 
   const [po, setPo] = useState<PO | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [receiveQtys, setReceiveQtys] = useState<Record<string, string>>({});
   const [invoiceNumber, setInvoiceNumber] = useState("");
@@ -97,6 +101,8 @@ export function PODetail() {
 
   const sendPo = async () => {
     setBusy(true);
+    setError(null);
+    setSuccess(null);
     const res = await shopFetch(`/api/purchase-orders/${id}`, shop, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -107,6 +113,9 @@ export function PODetail() {
     if (!res.ok) {
       setError(data.error ?? "Send failed");
       return;
+    }
+    if (data.email?.sent) {
+      setSuccess("PO emailed to supplier and marked as sent.");
     }
     await load();
   };
@@ -128,17 +137,23 @@ export function PODetail() {
       return;
     }
 
+    const invoicePayload =
+      plan.canPartialInvoice && (invoiceNumber || invoiceAmount)
+        ? {
+            invoiceNumber: invoiceNumber || undefined,
+            invoiceAmount: invoiceAmount ? Number(invoiceAmount) : undefined,
+          }
+        : undefined;
+
     setBusy(true);
+    setError(null);
     const res = await shopFetch(`/api/purchase-orders/${id}`, shop, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         action: "receive",
         lines,
-        invoice: {
-          invoiceNumber: invoiceNumber || undefined,
-          invoiceAmount: invoiceAmount ? Number(invoiceAmount) : undefined,
-        },
+        invoice: invoicePayload,
       }),
     });
     const data = await res.json().catch(() => ({}));
@@ -231,6 +246,13 @@ export function PODetail() {
             </Banner>
           </Layout.Section>
         )}
+        {success && (
+          <Layout.Section>
+            <Banner tone="success" onDismiss={() => setSuccess(null)}>
+              {success}
+            </Banner>
+          </Layout.Section>
+        )}
 
         <Layout.Section>
           <Card>
@@ -310,7 +332,11 @@ export function PODetail() {
                 </Text>
                 <ProgressBar progress={progress} size="small" />
                 <InlineStack gap="200" wrap>
-                  <Button onClick={() => setScanOpen(true)}>Scan with Camera</Button>
+                  {plan.canScanReceive ? (
+                    <Button onClick={() => setScanOpen(true)}>Scan with Camera</Button>
+                  ) : (
+                    <Button disabled>Scan with Camera (Growth+)</Button>
+                  )}
                   <Button onClick={() => receive(true)} loading={busy}>
                     Receive All
                   </Button>
@@ -318,27 +344,47 @@ export function PODetail() {
                     Receive & Sync to Shopify
                   </Button>
                 </InlineStack>
+                {!plan.loading && !plan.canScanReceive && (
+                  <UpgradeBanner
+                    planTier={plan.planTier}
+                    feature="Barcode scan-to-receive"
+                    shop={shop}
+                  />
+                )}
                 <FormLayout>
-                  <TextField
-                    label="Scan quantity per barcode"
-                    type="number"
-                    value={scanQty}
-                    onChange={setScanQty}
-                    autoComplete="off"
-                  />
-                  <TextField
-                    label="Invoice # (this shipment)"
-                    value={invoiceNumber}
-                    onChange={setInvoiceNumber}
-                    autoComplete="off"
-                  />
-                  <TextField
-                    label="Invoice amount"
-                    type="number"
-                    value={invoiceAmount}
-                    onChange={setInvoiceAmount}
-                    autoComplete="off"
-                  />
+                  {plan.canScanReceive && (
+                    <TextField
+                      label="Scan quantity per barcode"
+                      type="number"
+                      value={scanQty}
+                      onChange={setScanQty}
+                      autoComplete="off"
+                    />
+                  )}
+                  {plan.canPartialInvoice ? (
+                    <>
+                      <TextField
+                        label="Invoice # (this shipment)"
+                        value={invoiceNumber}
+                        onChange={setInvoiceNumber}
+                        autoComplete="off"
+                      />
+                      <TextField
+                        label="Invoice amount"
+                        type="number"
+                        value={invoiceAmount}
+                        onChange={setInvoiceAmount}
+                        autoComplete="off"
+                      />
+                    </>
+                  ) : (
+                    <UpgradeBanner
+                      planTier={plan.planTier}
+                      feature="Per-shipment invoice recording"
+                      requiredTier="pro"
+                      shop={shop}
+                    />
+                  )}
                 </FormLayout>
                 <IndexTable
                   resourceName={{ singular: "line", plural: "lines" }}

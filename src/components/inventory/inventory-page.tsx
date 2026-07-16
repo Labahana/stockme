@@ -19,7 +19,6 @@ import {
   TextField,
   useIndexResourceState,
 } from "@shopify/polaris";
-import { generateBarcodeValue } from "@/lib/barcodes/generate";
 import { renderBarcodeDataUrl } from "@/lib/barcodes/render";
 import { usePlanFeatures } from "@/lib/hooks/use-plan";
 import { authFetch } from "@/lib/hooks/use-shop";
@@ -226,6 +225,21 @@ export function InventoryPageClient() {
       resourceIDResolver: (item) => (item as unknown as InventoryItem).variant_id,
     });
 
+  /** True select-all: Polaris "All" means every row matching current filters, not just this page. */
+  const selectAllFiltered = allResourcesSelected && pagination.total > items.length;
+  const selectionCount = selectAllFiltered ? pagination.total : selectedResources.length;
+
+  const currentFilters = useMemo(
+    () => ({
+      locationId,
+      search: query || undefined,
+      stockStatus: stockStatus !== "all" ? stockStatus : undefined,
+      tag,
+      vendor,
+    }),
+    [locationId, query, stockStatus, tag, vendor],
+  );
+
   const forceSync = async () => {
     setSyncing(true);
     setError(null);
@@ -307,19 +321,30 @@ export function InventoryPageClient() {
   };
 
   const applyBulkThresholds = async () => {
+    if (selectionCount === 0) return;
     const params = new URLSearchParams();
     if (shop) params.set("shop", shop);
+
+    const body = selectAllFiltered
+      ? {
+          applyToFiltered: true,
+          filters: currentFilters,
+          minStock: Number(bulkMin),
+          maxStock: bulkMax === "" ? null : Number(bulkMax),
+          targetStock: bulkTarget === "" ? undefined : Number(bulkTarget),
+        }
+      : {
+          variantIds: selectedResources,
+          locationId,
+          minStock: Number(bulkMin),
+          maxStock: bulkMax === "" ? null : Number(bulkMax),
+          targetStock: bulkTarget === "" ? undefined : Number(bulkTarget),
+        };
 
     const res = await authFetch(`/api/inventory/bulk?${params.toString()}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        variantIds: selectedResources,
-        locationId,
-        minStock: Number(bulkMin),
-        maxStock: bulkMax === "" ? null : Number(bulkMax),
-        targetStock: bulkTarget === "" ? undefined : Number(bulkTarget),
-      }),
+      body: JSON.stringify(body),
     });
 
     if (!res.ok) {
@@ -327,46 +352,42 @@ export function InventoryPageClient() {
       return;
     }
 
+    const data = await res.json().catch(() => ({}));
     setBulkOpen(false);
+    setSyncMessage(`Updated min/max on ${data.updated ?? selectionCount} item(s)`);
     await loadItems(pagination.page);
   };
 
-  const assignBarcodes = async (variantIds: string[]) => {
-    if (variantIds.length === 0) return;
+  const assignBarcodes = async () => {
+    if (selectionCount === 0) return;
     setBarcodeBusy(true);
     setError(null);
-    let successCount = 0;
-    let firstError: string | null = null;
     try {
       const params = new URLSearchParams();
       if (shop) params.set("shop", shop);
 
-      for (const variantId of variantIds) {
-        const item = items.find((i) => i.variant_id === variantId);
-        if (item?.barcode) {
-          successCount += 1;
-          continue;
-        }
+      const body = selectAllFiltered
+        ? { action: "bulk", applyToFiltered: true, filters: currentFilters }
+        : { action: "bulk", variantIds: selectedResources };
 
-        const barcode = generateBarcodeValue(variantId);
-        const res = await authFetch(`/api/barcodes?${params.toString()}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ variantId, barcode }),
-        });
-        if (!res.ok) {
-          if (!firstError) firstError = "Some barcodes could not be assigned";
-          continue;
-        }
-        successCount += 1;
-        if (!item?.barcode) {
-          setBarcodePreview(renderBarcodeDataUrl(barcode));
-        }
+      const res = await authFetch(`/api/barcodes?${params.toString()}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error ?? "Failed to generate barcodes");
+        return;
       }
-      if (firstError && successCount === 0) {
-        setError(firstError);
-      } else if (firstError) {
-        setError(`${firstError} (${successCount}/${variantIds.length} succeeded)`);
+      if (data.barcodes?.[0]?.barcode) {
+        setBarcodePreview(renderBarcodeDataUrl(data.barcodes[0].barcode));
+      }
+      setSyncMessage(
+        `Barcodes: ${data.generated ?? 0} generated, ${data.skipped ?? 0} already set`,
+      );
+      if (data.errors?.length) {
+        setError(`${data.errors.length} barcode(s) failed`);
       }
       await loadItems(pagination.page);
     } catch {
@@ -605,7 +626,7 @@ export function InventoryPageClient() {
             itemCount={pagination.total}
             selectedItemsCount={
               viewMode === "location"
-                ? allResourcesSelected
+                ? allResourcesSelected || selectAllFiltered
                   ? "All"
                   : selectedResources.length
                 : undefined
@@ -636,7 +657,7 @@ export function InventoryPageClient() {
                     { content: "Set min/max", onAction: () => setBulkOpen(true) },
                     {
                       content: barcodeBusy ? "Generating…" : "Generate barcodes",
-                      onAction: () => assignBarcodes(selectedResources),
+                      onAction: () => void assignBarcodes(),
                     },
                   ]
                 : undefined
@@ -690,8 +711,9 @@ export function InventoryPageClient() {
         <Modal.Section>
           <BlockStack gap="300">
             <Text as="p" tone="subdued">
-              Update {selectedResources.length} selected variant
-              {selectedResources.length === 1 ? "" : "s"} at this location.
+              Update {selectionCount} selected variant
+              {selectionCount === 1 ? "" : "s"}
+              {selectAllFiltered ? " matching current filters" : ""} at this location.
             </Text>
             <TextField
               label="Minimum stock (reorder point)"

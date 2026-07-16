@@ -34,7 +34,6 @@ export function ReportsPageClient() {
   const [error, setError] = useState<string | null>(null);
 
   const reportTypes = REPORT_TYPES.filter((r) => {
-    if (r.value === "valuation") return plan.canBundleValuation;
     if (r.value === "supplier_performance") return plan.canSupplierPerformance;
     return true;
   });

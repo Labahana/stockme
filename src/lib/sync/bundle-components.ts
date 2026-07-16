@@ -127,6 +127,126 @@ const SINGLE_PRODUCT_BUNDLE_QUERY = `
   }
 `;
 
+const PRODUCT_VARIANTS_PAGE_QUERY = `
+  query ProductVariantsPage($id: ID!, $cursor: String) {
+    product(id: $id) {
+      variants(first: 250, after: $cursor) {
+        pageInfo { hasNextPage endCursor }
+        edges {
+          node {
+            id
+            requiresComponents
+            productVariantComponents(first: 250) {
+              pageInfo { hasNextPage endCursor }
+              nodes {
+                quantity
+                productVariant { id }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+`;
+
+const VARIANT_COMPONENTS_PAGE_QUERY = `
+  query VariantComponentsPage($id: ID!, $cursor: String) {
+    productVariant(id: $id) {
+      productVariantComponents(first: 250, after: $cursor) {
+        pageInfo { hasNextPage endCursor }
+        nodes {
+          quantity
+          productVariant { id }
+        }
+      }
+    }
+  }
+`;
+
+const BUNDLE_COMPONENTS_PAGE_QUERY = `
+  query BundleComponentsPage($id: ID!, $cursor: String) {
+    product(id: $id) {
+      bundleComponents(first: 250, after: $cursor) {
+        pageInfo { hasNextPage endCursor }
+        nodes {
+          quantity
+          componentProduct {
+            id
+            variants(first: 250) {
+              nodes { id }
+            }
+          }
+        }
+      }
+    }
+  }
+`;
+
+async function hydrateProductVariants(
+  client: Awaited<ReturnType<typeof getGraphqlClient>>,
+  product: BundleProductNode,
+) {
+  let cursor = product.variants.pageInfo.hasNextPage
+    ? product.variants.pageInfo.endCursor
+    : null;
+
+  while (cursor) {
+    const data = await shopifyGql<{
+      product: { variants: BundleProductNode["variants"] } | null;
+    }>(client, PRODUCT_VARIANTS_PAGE_QUERY, { id: product.id, cursor });
+
+    const page = data.product?.variants;
+    if (!page) break;
+    product.variants.edges.push(...page.edges);
+    cursor = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
+  }
+
+  for (const { node } of product.variants.edges) {
+    let compCursor = node.productVariantComponents?.pageInfo?.hasNextPage
+      ? node.productVariantComponents.pageInfo.endCursor
+      : null;
+    while (compCursor) {
+      const data = await shopifyGql<{
+        productVariant: {
+          productVariantComponents: BundleVariantNode["productVariantComponents"];
+        } | null;
+      }>(client, VARIANT_COMPONENTS_PAGE_QUERY, {
+        id: node.id,
+        cursor: compCursor,
+      });
+      const page = data.productVariant?.productVariantComponents;
+      if (!page) break;
+      if (!node.productVariantComponents) {
+        node.productVariantComponents = page;
+      } else {
+        node.productVariantComponents.nodes.push(...page.nodes);
+      }
+      compCursor = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
+    }
+  }
+
+  let bundleCursor = product.bundleComponents?.pageInfo?.hasNextPage
+    ? product.bundleComponents.pageInfo.endCursor
+    : null;
+  while (bundleCursor) {
+    const data = await shopifyGql<{
+      product: { bundleComponents: BundleProductNode["bundleComponents"] } | null;
+    }>(client, BUNDLE_COMPONENTS_PAGE_QUERY, {
+      id: product.id,
+      cursor: bundleCursor,
+    });
+    const page = data.product?.bundleComponents;
+    if (!page) break;
+    if (!product.bundleComponents) {
+      product.bundleComponents = page;
+    } else {
+      product.bundleComponents.nodes.push(...page.nodes);
+    }
+    bundleCursor = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
+  }
+}
+
 function productFixedComponents(
   product: BundleProductNode,
 ): ComponentInput[] {
@@ -234,7 +354,11 @@ async function syncBundleProduct(
   shopId: string,
   product: BundleProductNode,
   stats: BundleSyncStats,
+  client?: Awaited<ReturnType<typeof getGraphqlClient>>,
 ) {
+  if (client) {
+    await hydrateProductVariants(client, product);
+  }
   const shopifyProductId = parseShopifyGid(product.id);
   const productFixed = productFixedComponents(product);
   const isBundle =
@@ -322,7 +446,7 @@ export async function runBundleComponentSync(
     );
 
     for (const { node } of data.products.edges) {
-      await syncBundleProduct(supabase, shopId, node, stats);
+      await syncBundleProduct(supabase, shopId, node, stats, client);
     }
 
     cursor = data.products.pageInfo.hasNextPage
@@ -357,7 +481,7 @@ export async function syncBundleComponentsForProduct(
     return stats;
   }
 
-  await syncBundleProduct(supabase, shopId, data.product, stats);
+  await syncBundleProduct(supabase, shopId, data.product, stats, client);
   return stats;
 }
 

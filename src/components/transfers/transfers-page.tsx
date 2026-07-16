@@ -8,6 +8,7 @@ import {
   Card,
   FormLayout,
   IndexTable,
+  InlineStack,
   Modal,
   Page,
   Select,
@@ -49,6 +50,9 @@ export function TransfersPageClient() {
   const [variantId, setVariantId] = useState("");
   const [variantSearch, setVariantSearch] = useState("");
   const [qty, setQty] = useState("1");
+  const [draftLines, setDraftLines] = useState<
+    { variantId: string; label: string; quantity: number }[]
+  >([]);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -96,13 +100,44 @@ export function TransfersPageClient() {
     setVariantOptions(data.items ?? []);
   };
 
+  const addDraftLine = () => {
+    if (!variantId) {
+      setError("Select a variant to add");
+      return;
+    }
+    const selected = variantOptions.find((v) => v.variant_id === variantId);
+    const label = selected
+      ? `${selected.sku ? `${selected.sku} — ` : ""}${selected.product_title}`
+      : variantId;
+    const quantity = Math.max(1, Number(qty) || 1);
+    setDraftLines((prev) => {
+      const existing = prev.find((l) => l.variantId === variantId);
+      if (existing) {
+        return prev.map((l) =>
+          l.variantId === variantId
+            ? { ...l, quantity: l.quantity + quantity }
+            : l,
+        );
+      }
+      return [...prev, { variantId, label, quantity }];
+    });
+    setVariantId("");
+    setQty("1");
+  };
+
   const createTransfer = async () => {
     if (!fromId || !toId) {
       setError("Select both From and To locations");
       return;
     }
-    if (!variantId) {
-      setError("Select a variant to transfer");
+    const lines =
+      draftLines.length > 0
+        ? draftLines.map((l) => ({ variantId: l.variantId, quantity: l.quantity }))
+        : variantId
+          ? [{ variantId, quantity: Number(qty) }]
+          : [];
+    if (lines.length === 0) {
+      setError("Add at least one variant to transfer");
       return;
     }
     const res = await shopFetch("/api/transfers", shop, {
@@ -111,7 +146,7 @@ export function TransfersPageClient() {
       body: JSON.stringify({
         fromLocationId: fromId,
         toLocationId: toId,
-        lines: [{ variantId, quantity: Number(qty) }],
+        lines,
       }),
     });
     if (!res.ok) {
@@ -123,6 +158,7 @@ export function TransfersPageClient() {
     setVariantId("");
     setQty("1");
     setVariantSearch("");
+    setDraftLines([]);
     load();
   };
 
@@ -197,7 +233,7 @@ export function TransfersPageClient() {
   });
 
   return (
-    <PlanGate requiredPlan="growth" featureName="Stock transfers" allowed>
+    <PlanGate requiredPlan="growth" featureName="Stock transfers" allowed={transfersAllowed}>
     <Page
       title="Transfers"
       primaryAction={{
@@ -238,9 +274,9 @@ export function TransfersPageClient() {
         </Card>
       </BlockStack>
 
-      <Modal open={open} onClose={() => setOpen(false)} title="New transfer"
+      <Modal open={open} onClose={() => { setOpen(false); setDraftLines([]); }} title="New transfer"
         primaryAction={{ content: "Create", onAction: createTransfer }}
-        secondaryActions={[{ content: "Cancel", onAction: () => setOpen(false) }]}>
+        secondaryActions={[{ content: "Cancel", onAction: () => { setOpen(false); setDraftLines([]); } }]}>
         <Modal.Section>
           <FormLayout>
             <Select
@@ -270,6 +306,27 @@ export function TransfersPageClient() {
               onChange={setVariantId}
             />
             <TextField label="Quantity" value={qty} onChange={setQty} autoComplete="off" />
+            <Button onClick={addDraftLine}>Add line</Button>
+            {draftLines.length > 0 && (
+              <BlockStack gap="100">
+                {draftLines.map((line) => (
+                  <InlineStack key={line.variantId} align="space-between" blockAlign="center">
+                    <span>
+                      {line.label} × {line.quantity}
+                    </span>
+                    <Button
+                      size="slim"
+                      tone="critical"
+                      onClick={() =>
+                        setDraftLines((prev) => prev.filter((l) => l.variantId !== line.variantId))
+                      }
+                    >
+                      Remove
+                    </Button>
+                  </InlineStack>
+                ))}
+              </BlockStack>
+            )}
           </FormLayout>
         </Modal.Section>
       </Modal>

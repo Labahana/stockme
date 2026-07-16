@@ -8,12 +8,12 @@ import {
   reportValuation,
 } from "@/lib/reports";
 import {
-  assertBundleCostReports,
   assertSupplierPerformanceReport,
 } from "@/lib/billing/limits";
 import { csvResponse, toCsv } from "@/lib/export/csv";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 export async function GET(request: NextRequest) {
   try {
@@ -24,13 +24,20 @@ export async function GET(request: NextRequest) {
     const locationId = request.nextUrl.searchParams.get("locationId") ?? undefined;
     const days = Number(request.nextUrl.searchParams.get("days") ?? "30");
     const exportCsv = request.nextUrl.searchParams.get("export") === "csv";
+    // Bundle-aware valuation is Pro; basic valuation is available on all plans.
+    const useBundleCosts =
+      type === "valuation"
+        ? ctx.store.plan_tier === "pro"
+        : type === "cogs"
+          ? ctx.store.plan_tier === "pro"
+          : true;
 
     let result;
     switch (type) {
       case "valuation": {
-        const blocked = assertBundleCostReports(ctx.store);
-        if (blocked) return NextResponse.json({ error: blocked }, { status: 403 });
-        result = await reportValuation(ctx.store.id, locationId);
+        result = await reportValuation(ctx.store.id, locationId, {
+          useBundleCosts,
+        });
         break;
       }
       case "supplier_performance": {
@@ -43,7 +50,7 @@ export async function GET(request: NextRequest) {
         result = await reportSellThrough(ctx.shop, ctx.store.id, days);
         break;
       case "cogs":
-        result = await reportCogs(ctx.store.id, days);
+        result = await reportCogs(ctx.store.id, days, { useBundleCosts });
         break;
       case "low_stock":
       default:

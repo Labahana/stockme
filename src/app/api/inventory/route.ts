@@ -7,6 +7,10 @@ import {
   fetchStoreVendors,
   fetchConsolidatedInventory,
 } from "@/lib/inventory/queries";
+import {
+  assertConsolidatedViewAllowed,
+  filterLocationsForPlan,
+} from "@/lib/billing/limits";
 import { toCsv } from "@/lib/export/csv";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +27,10 @@ export async function GET(request: NextRequest) {
     const exportCsv = searchParams.get("export") === "csv";
 
     if (consolidated) {
+      const blocked = assertConsolidatedViewAllowed(ctx.store);
+      if (blocked) {
+        return NextResponse.json({ error: blocked }, { status: 403 });
+      }
       if (exportCsv) {
         return streamInventoryCsv(ctx.store.id, null, searchParams.get("search"));
       }
@@ -42,7 +50,8 @@ export async function GET(request: NextRequest) {
     }
 
     if (!locationId) {
-      const locations = await fetchLocations(ctx.store.id);
+      const allLocations = await fetchLocations(ctx.store.id);
+      const locations = await filterLocationsForPlan(ctx.store, allLocations);
       return NextResponse.json({
         store: {
           shop: ctx.shop,

@@ -12,7 +12,10 @@ async function effectiveCost(
   variantId: string,
   baseCost: number,
   cache: CostCache,
+  useBundleCosts: boolean,
 ): Promise<number> {
+  if (!useBundleCosts) return baseCost;
+
   const key = `${shopId}:${variantId}`;
   if (cache.has(key)) return cache.get(key)!;
 
@@ -38,53 +41,45 @@ async function effectiveCost(
   return cost;
 }
 
-export async function reportLowStock(shopId: string, locationId?: string) {
+async function paginateVariants<T>(
+  shopId: string,
+  select: string,
+  mapBatch: (rows: T[]) => Promise<void> | void,
+  pageSize = 1000,
+) {
   const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("variants")
-    .select(
-      `sku, title, products(title),
-       inventory_levels(available, location_id, locations(name)),
-       variant_location_settings(min_stock, location_id)`,
-    )
-    .eq("shop_id", shopId)
-    .limit(5000);
+  let from = 0;
+  for (;;) {
+    const { data, error } = await supabase
+      .from("variants")
+      .select(select)
+      .eq("shop_id", shopId)
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+    const batch = (data ?? []) as T[];
+    if (batch.length === 0) break;
+    await mapBatch(batch);
+    if (batch.length < pageSize) break;
+    from += pageSize;
+  }
+}
 
-  if (error) throw error;
+export async function reportLowStock(shopId: string, locationId?: string) {
+  type VariantRow = {
+    sku: string | null;
+    title: string;
+    products: { title: string } | { title: string }[] | null;
+    inventory_levels:
+      | { available: number; location_id: string; locations: { name: string } | { name: string }[] | null }
+      | { available: number; location_id: string; locations: { name: string } | { name: string }[] | null }[]
+      | null;
+    variant_location_settings:
+      | { min_stock: number; location_id: string }
+      | { min_stock: number; location_id: string }[]
+      | null;
+  };
 
-  const rows = (data ?? [])
-    .flatMap((v) => {
-      const levels = Array.isArray(v.inventory_levels)
-        ? v.inventory_levels
-        : v.inventory_levels
-          ? [v.inventory_levels]
-          : [];
-      const settings = Array.isArray(v.variant_location_settings)
-        ? v.variant_location_settings
-        : v.variant_location_settings
-          ? [v.variant_location_settings]
-          : [];
-      const product = Array.isArray(v.products) ? v.products[0] : v.products;
-
-      return levels
-        .filter((l) => l && (!locationId || l.location_id === locationId))
-        .map((l) => {
-          const setting = settings.find((s) => s.location_id === l.location_id);
-          const min = setting?.min_stock ?? 0;
-          if (min <= 0 || l.available >= min) return null;
-          const loc = Array.isArray(l.locations) ? l.locations[0] : l.locations;
-          return {
-            product: product?.title ?? "",
-            variant: v.title,
-            sku: v.sku ?? "",
-            location: loc?.name ?? "",
-            available: l.available,
-            min_stock: min,
-            shortfall: min - l.available,
-          };
-        })
-        .filter(Boolean);
-    }) as {
+  const rows: {
     product: string;
     variant: string;
     sku: string;
@@ -92,26 +87,73 @@ export async function reportLowStock(shopId: string, locationId?: string) {
     available: number;
     min_stock: number;
     shortfall: number;
-  }[];
+  }[] = [];
+
+  await paginateVariants<VariantRow>(
+    shopId,
+    `sku, title, products(title),
+     inventory_levels(available, location_id, locations(name)),
+     variant_location_settings(min_stock, location_id)`,
+    (batch) => {
+      for (const v of batch) {
+        const levels = Array.isArray(v.inventory_levels)
+          ? v.inventory_levels
+          : v.inventory_levels
+            ? [v.inventory_levels]
+            : [];
+        const settings = Array.isArray(v.variant_location_settings)
+          ? v.variant_location_settings
+          : v.variant_location_settings
+            ? [v.variant_location_settings]
+            : [];
+        const product = Array.isArray(v.products) ? v.products[0] : v.products;
+
+        for (const l of levels) {
+          if (!l || (locationId && l.location_id !== locationId)) continue;
+          const setting = settings.find((s) => s.location_id === l.location_id);
+          const min = setting?.min_stock ?? 0;
+          if (min <= 0 || l.available >= min) continue;
+          const loc = Array.isArray(l.locations) ? l.locations[0] : l.locations;
+          rows.push({
+            product: product?.title ?? "",
+            variant: v.title,
+            sku: v.sku ?? "",
+            location: loc?.name ?? "",
+            available: l.available,
+            min_stock: min,
+            shortfall: min - l.available,
+          });
+        }
+      }
+    },
+  );
 
   const totalShortfall = rows.reduce((sum, r) => sum + r.shortfall, 0);
   return { rows, totals: { count: rows.length, totalShortfall } };
 }
 
-export async function reportValuation(shopId: string, locationId?: string) {
-  const supabase = createAdminClient();
-  const bundleChildren = await getBundleChildVariantIds(shopId);
+export async function reportValuation(
+  shopId: string,
+  locationId?: string,
+  options?: { useBundleCosts?: boolean },
+) {
+  const useBundleCosts = options?.useBundleCosts ?? true;
+  const bundleChildren = useBundleCosts
+    ? await getBundleChildVariantIds(shopId)
+    : new Set<string>();
   const cache = createCostCache();
-  const { data, error } = await supabase
-    .from("variants")
-    .select(
-      `id, sku, title, cost, products(title),
-       inventory_levels(available, location_id, locations(name))`,
-    )
-    .eq("shop_id", shopId)
-    .limit(5000);
 
-  if (error) throw error;
+  type VariantRow = {
+    id: string;
+    sku: string | null;
+    title: string;
+    cost: number | null;
+    products: { title: string } | { title: string }[] | null;
+    inventory_levels:
+      | { available: number; location_id: string; locations: { name: string } | { name: string }[] | null }
+      | { available: number; location_id: string; locations: { name: string } | { name: string }[] | null }[]
+      | null;
+  };
 
   const rows: {
     product: string;
@@ -123,32 +165,45 @@ export async function reportValuation(shopId: string, locationId?: string) {
     value: number;
   }[] = [];
 
-  for (const v of data ?? []) {
-    if (bundleChildren.has(v.id)) continue;
+  await paginateVariants<VariantRow>(
+    shopId,
+    `id, sku, title, cost, products(title),
+     inventory_levels(available, location_id, locations(name))`,
+    async (batch) => {
+      for (const v of batch) {
+        if (bundleChildren.has(v.id)) continue;
 
-    const unitCost = await effectiveCost(shopId, v.id, Number(v.cost ?? 0), cache);
-    const levels = Array.isArray(v.inventory_levels)
-      ? v.inventory_levels
-      : v.inventory_levels
-        ? [v.inventory_levels]
-        : [];
-    const product = Array.isArray(v.products) ? v.products[0] : v.products;
+        const unitCost = await effectiveCost(
+          shopId,
+          v.id,
+          Number(v.cost ?? 0),
+          cache,
+          useBundleCosts,
+        );
+        const levels = Array.isArray(v.inventory_levels)
+          ? v.inventory_levels
+          : v.inventory_levels
+            ? [v.inventory_levels]
+            : [];
+        const product = Array.isArray(v.products) ? v.products[0] : v.products;
 
-    for (const l of levels) {
-      if (!l || (locationId && l.location_id !== locationId)) continue;
-      const loc = Array.isArray(l.locations) ? l.locations[0] : l.locations;
-      const value = (l.available ?? 0) * unitCost;
-      rows.push({
-        product: product?.title ?? "",
-        variant: v.title,
-        sku: v.sku ?? "",
-        location: loc?.name ?? "",
-        available: l.available ?? 0,
-        unit_cost: unitCost,
-        value: Math.round(value * 100) / 100,
-      });
-    }
-  }
+        for (const l of levels) {
+          if (!l || (locationId && l.location_id !== locationId)) continue;
+          const loc = Array.isArray(l.locations) ? l.locations[0] : l.locations;
+          const value = (l.available ?? 0) * unitCost;
+          rows.push({
+            product: product?.title ?? "",
+            variant: v.title,
+            sku: v.sku ?? "",
+            location: loc?.name ?? "",
+            available: l.available ?? 0,
+            unit_cost: unitCost,
+            value: Math.round(value * 100) / 100,
+          });
+        }
+      }
+    },
+  );
 
   const totalValue = rows.reduce((s, r) => s + r.value, 0);
   return { rows, totals: { count: rows.length, totalValue } };
@@ -203,7 +258,12 @@ export async function reportSupplierPerformance(shopId: string) {
   };
 }
 
-export async function reportCogs(shopId: string, days = 30) {
+export async function reportCogs(
+  shopId: string,
+  days = 30,
+  options?: { useBundleCosts?: boolean },
+) {
+  const useBundleCosts = options?.useBundleCosts ?? true;
   const supabase = createAdminClient();
   const since = new Date(Date.now() - days * 86400000).toISOString();
   const cache = createCostCache();
@@ -244,7 +304,7 @@ export async function reportCogs(shopId: string, days = 30) {
       const variantId = poLine?.variant_id as string | undefined;
       const baseCost = Number(poLine?.unit_cost ?? variant?.cost ?? 0);
       const unitCost = variantId
-        ? await effectiveCost(shopId, variantId, baseCost, cache)
+        ? await effectiveCost(shopId, variantId, baseCost, cache, useBundleCosts)
         : baseCost;
       const cost = line.quantity * unitCost;
       rows.push({
@@ -267,41 +327,56 @@ export async function reportSellThrough(
   shopId: string,
   days = 30,
 ) {
-  const supabase = createAdminClient();
   const since = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
   const { fetchSalesByVariant } = await import("@/lib/forecast");
   const salesMap = await fetchSalesByVariant(shop, `created_at:>=${since}`);
 
-  const { data: variants, error } = await supabase
-    .from("variants")
-    .select(`id, sku, title, shopify_variant_id, inventory_levels(available)`)
-    .eq("shop_id", shopId)
-    .limit(5000);
+  type VariantRow = {
+    id: string;
+    sku: string | null;
+    title: string;
+    shopify_variant_id: number;
+    inventory_levels:
+      | { available: number }
+      | { available: number }[]
+      | null;
+  };
 
-  if (error) throw error;
+  const rows: {
+    sku: string;
+    variant: string;
+    units_sold: number;
+    available: number;
+    sell_through_pct: number;
+  }[] = [];
 
-  const rows = (variants ?? [])
-    .map((v) => {
-      const levels = Array.isArray(v.inventory_levels)
-        ? v.inventory_levels
-        : v.inventory_levels
-          ? [v.inventory_levels]
-          : [];
-      const available = levels.reduce((s, l) => s + (l.available ?? 0), 0);
-      const sold = salesMap.get(v.shopify_variant_id) ?? 0;
-      const denom = sold + available;
-      const pct = denom > 0 ? Math.round((sold / denom) * 1000) / 10 : 0;
-      return {
-        sku: v.sku ?? "",
-        variant: v.title,
-        units_sold: sold,
-        available,
-        sell_through_pct: pct,
-      };
-    })
-    .filter((r) => r.units_sold > 0)
-    .sort((a, b) => b.sell_through_pct - a.sell_through_pct)
-    .slice(0, 500);
+  await paginateVariants<VariantRow>(
+    shopId,
+    `id, sku, title, shopify_variant_id, inventory_levels(available)`,
+    (batch) => {
+      for (const v of batch) {
+        const levels = Array.isArray(v.inventory_levels)
+          ? v.inventory_levels
+          : v.inventory_levels
+            ? [v.inventory_levels]
+            : [];
+        const available = levels.reduce((s, l) => s + (l.available ?? 0), 0);
+        const sold = salesMap.get(v.shopify_variant_id) ?? 0;
+        if (sold <= 0) continue;
+        const denom = sold + available;
+        const pct = denom > 0 ? Math.round((sold / denom) * 1000) / 10 : 0;
+        rows.push({
+          sku: v.sku ?? "",
+          variant: v.title,
+          units_sold: sold,
+          available,
+          sell_through_pct: pct,
+        });
+      }
+    },
+  );
+
+  rows.sort((a, b) => b.sell_through_pct - a.sell_through_pct);
 
   const avgSellThrough =
     rows.length > 0

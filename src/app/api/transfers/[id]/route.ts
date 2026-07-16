@@ -85,17 +85,20 @@ export async function PATCH(
         );
       }
 
+      const missingInventoryItems: string[] = [];
       for (const line of lines) {
         const variant = Array.isArray(line.variants) ? line.variants[0] : line.variants;
-        if (variant?.shopify_inventory_item_id && fromLoc) {
-          await adjustShopifyInventory(
-            ctx.shop,
-            inventoryItemGid(variant.shopify_inventory_item_id),
-            locationGid(fromLoc.shopify_location_id),
-            -line.quantity,
-            "movement",
-          );
+        if (!variant?.shopify_inventory_item_id || !fromLoc) {
+          missingInventoryItems.push(String(line.variant_id));
+          continue;
         }
+        await adjustShopifyInventory(
+          ctx.shop,
+          inventoryItemGid(variant.shopify_inventory_item_id),
+          locationGid(fromLoc.shopify_location_id),
+          -line.quantity,
+          "movement",
+        );
         const { data: inv } = await supabase
           .from("inventory_levels")
           .select("available")
@@ -110,6 +113,17 @@ export async function PATCH(
             .eq("variant_id", line.variant_id)
             .eq("location_id", transfer.from_location_id);
         }
+      }
+
+      if (missingInventoryItems.length > 0) {
+        return NextResponse.json(
+          {
+            error:
+              "Cannot ship: some variants are missing Shopify inventory item IDs. Run Force resync, then try again.",
+            missingVariantIds: missingInventoryItems,
+          },
+          { status: 409 },
+        );
       }
 
       const { data: updated } = await supabase
@@ -131,17 +145,20 @@ export async function PATCH(
         );
       }
 
+      const missingInventoryItems: string[] = [];
       for (const line of lines) {
         const variant = Array.isArray(line.variants) ? line.variants[0] : line.variants;
-        if (variant?.shopify_inventory_item_id && toLoc) {
-          await adjustShopifyInventory(
-            ctx.shop,
-            inventoryItemGid(variant.shopify_inventory_item_id),
-            locationGid(toLoc.shopify_location_id),
-            line.quantity,
-            "movement",
-          );
+        if (!variant?.shopify_inventory_item_id || !toLoc) {
+          missingInventoryItems.push(String(line.variant_id));
+          continue;
         }
+        await adjustShopifyInventory(
+          ctx.shop,
+          inventoryItemGid(variant.shopify_inventory_item_id),
+          locationGid(toLoc.shopify_location_id),
+          line.quantity,
+          "movement",
+        );
 
         const { data: inv } = await supabase
           .from("inventory_levels")
@@ -166,6 +183,17 @@ export async function PATCH(
           .from("stock_transfer_lines")
           .update({ received_qty: line.quantity })
           .eq("id", line.id);
+      }
+
+      if (missingInventoryItems.length > 0) {
+        return NextResponse.json(
+          {
+            error:
+              "Cannot receive: some variants are missing Shopify inventory item IDs. Run Force resync, then try again.",
+            missingVariantIds: missingInventoryItems,
+          },
+          { status: 409 },
+        );
       }
 
       const { data: updated } = await supabase

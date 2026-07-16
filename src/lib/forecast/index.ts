@@ -42,7 +42,7 @@ const ORDERS_QUERY = `
 `;
 
 /** Cap Shopify order pages so forecast stays responsive on large stores. */
-const MAX_ORDER_PAGES = 20;
+const MAX_ORDER_PAGES = 100;
 
 type OrdersQueryResult = {
   orders: {
@@ -142,7 +142,7 @@ async function loadForecastVariants(
   const all: ForecastVariantRow[] = [];
   let from = 0;
 
-  while (all.length < 5000) {
+  while (true) {
     let query = supabase
       .from("variants")
       .select(
@@ -167,7 +167,7 @@ async function loadForecastVariants(
     from += pageSize;
   }
 
-  return all.slice(0, 5000);
+  return all;
 }
 
 export async function computeForecastLines(

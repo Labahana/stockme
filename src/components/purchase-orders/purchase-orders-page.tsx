@@ -54,6 +54,8 @@ export function PurchaseOrdersPageClient() {
   const searchParams = useSearchParams();
   const plan = usePlanFeatures();
   const [orders, setOrders] = useState<PO[]>([]);
+  const [poPage, setPoPage] = useState(1);
+  const [poTotalPages, setPoTotalPages] = useState(1);
   const [suppliers, setSuppliers] = useState<{ id: string; name: string }[]>([]);
   const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -81,12 +83,12 @@ export function PurchaseOrdersPageClient() {
     (fm) => plan.canAdvancedForecast || fm === "last_x_days",
   );
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (page = poPage) => {
     setLoading(true);
     setError(null);
     try {
       const [poRes, supRes, invRes] = await Promise.all([
-        shopFetch("/api/purchase-orders", shop),
+        shopFetch(`/api/purchase-orders?page=${page}&limit=50`, shop),
         shopFetch("/api/suppliers", shop),
         shopFetch("/api/inventory", shop),
       ]);
@@ -101,6 +103,8 @@ export function PurchaseOrdersPageClient() {
       const supData = await supRes.json();
       const invData = await invRes.json();
       setOrders(poData.purchaseOrders ?? []);
+      setPoPage(poData.pagination?.page ?? page);
+      setPoTotalPages(poData.pagination?.totalPages ?? 1);
       setSuppliers((supData.suppliers ?? []).map((s: { id: string; name: string }) => ({ id: s.id, name: s.name })));
       setLocations(invData.locations ?? []);
       setLocationId((prev) => prev || (invData.locations?.[0]?.id ?? ""));
@@ -109,7 +113,7 @@ export function PurchaseOrdersPageClient() {
     } finally {
       setLoading(false);
     }
-  }, [shop]);
+  }, [shop, poPage]);
 
   useEffect(() => {
     load();
@@ -322,7 +326,15 @@ export function PurchaseOrdersPageClient() {
           <InlineStack gap="200">
             <Button size="slim" onClick={() => downloadPdf(po.id)}>PDF</Button>
             {po.status === "draft" && (
-              <Button size="slim" onClick={() => sendPo(po.id)}>Send</Button>
+              <Button
+                size="slim"
+                onClick={async () => {
+                  const ok = await sendPo(po.id);
+                  if (ok) load();
+                }}
+              >
+                Send
+              </Button>
             )}
             {(po.status === "sent" || po.status === "partially_received") && (
               <Button
@@ -390,6 +402,12 @@ export function PurchaseOrdersPageClient() {
               { content: "Send selected", onAction: bulkSend },
               { content: "Download PDFs", onAction: bulkExportPdf },
             ]}
+            pagination={{
+              hasNext: poPage < poTotalPages,
+              hasPrevious: poPage > 1,
+              onNext: () => void load(poPage + 1),
+              onPrevious: () => void load(poPage - 1),
+            }}
           >
             {rows}
           </IndexTable>

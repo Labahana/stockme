@@ -62,20 +62,35 @@ export async function GET(request: NextRequest) {
     }
 
     const status = request.nextUrl.searchParams.get("status");
+    const page = Math.max(1, Number(request.nextUrl.searchParams.get("page") ?? "1"));
+    const limit = Math.min(200, Math.max(1, Number(request.nextUrl.searchParams.get("limit") ?? "50")));
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+
     let q = supabase
       .from("purchase_orders")
       .select(
         `*, suppliers(name, email), locations(name),
          po_line_items(id, ordered_qty, received_qty, unit_cost, variants(sku, title))`,
+        { count: "exact" },
       )
       .eq("shop_id", ctx.store.id)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .range(from, to);
 
     if (status) q = q.eq("status", status);
 
-    const { data, error } = await q.limit(200);
+    const { data, error, count } = await q;
     if (error) throw error;
-    return NextResponse.json({ purchaseOrders: data ?? [] });
+    return NextResponse.json({
+      purchaseOrders: data ?? [],
+      pagination: {
+        page,
+        limit,
+        total: count ?? 0,
+        totalPages: Math.ceil((count ?? 0) / limit) || 1,
+      },
+    });
   } catch (e) {
     console.error(e);
     return NextResponse.json({ error: "Failed to load POs" }, { status: 500 });

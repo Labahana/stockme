@@ -120,7 +120,7 @@ export async function fetchStoreVendors(shopId: string) {
     .select("vendor")
     .eq("shop_id", shopId)
     .not("vendor", "is", null)
-    .limit(2000);
+    .limit(50_000);
   if (fallbackError) throw fallbackError;
 
   const vendorSet = new Set<string>();

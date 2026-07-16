@@ -93,6 +93,45 @@ export async function PATCH(
         );
       }
 
+      const supplier = Array.isArray(fullPo.suppliers)
+        ? fullPo.suppliers[0]
+        : fullPo.suppliers;
+      const location = Array.isArray(fullPo.locations)
+        ? fullPo.locations[0]
+        : fullPo.locations;
+
+      if (!supplier?.email) {
+        return NextResponse.json(
+          {
+            error:
+              "Supplier has no email address. Add an email on the Vendors page, then send again.",
+            email: { sent: false, reason: "no_supplier_email" },
+          },
+          { status: 400 },
+        );
+      }
+
+      const emailResult = await sendPurchaseOrderEmail({
+        to: supplier.email,
+        poNumber: fullPo.po_number,
+        supplierName: supplier.name,
+        locationName: location?.name ?? "",
+        lineCount: (fullPo.po_line_items ?? []).length,
+        pdfBase64: purchaseOrderPdfBase64(fullPo as PoDetail),
+      });
+
+      if (!emailResult.sent) {
+        const reason =
+          emailResult.reason === "resend_not_configured" ||
+          emailResult.reason === "email_not_configured"
+            ? "Email is not configured (missing RESEND_API_KEY). PO was not marked as sent."
+            : `Email failed (${emailResult.reason ?? "unknown"}). PO was not marked as sent.`;
+        return NextResponse.json(
+          { error: reason, email: emailResult },
+          { status: 502 },
+        );
+      }
+
       const { data, error } = await supabase
         .from("purchase_orders")
         .update({ status: "sent", sent_at: new Date().toISOString() })
@@ -101,28 +140,6 @@ export async function PATCH(
         .select("*")
         .single();
       if (error) throw error;
-
-      const supplier = Array.isArray(fullPo.suppliers)
-        ? fullPo.suppliers[0]
-        : fullPo.suppliers;
-      const location = Array.isArray(fullPo.locations)
-        ? fullPo.locations[0]
-        : fullPo.locations;
-
-      let emailResult: { sent: boolean; reason?: string } = {
-        sent: false,
-        reason: "no_supplier_email",
-      };
-      if (supplier?.email) {
-        emailResult = await sendPurchaseOrderEmail({
-          to: supplier.email,
-          poNumber: fullPo.po_number,
-          supplierName: supplier.name,
-          locationName: location?.name ?? "",
-          lineCount: (fullPo.po_line_items ?? []).length,
-          pdfBase64: purchaseOrderPdfBase64(fullPo as PoDetail),
-        });
-      }
 
       return NextResponse.json({ purchaseOrder: data, email: emailResult });
     }
