@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     const host = request.nextUrl.searchParams.get("host");
     const redirectUrl = host
       ? await shopify.auth.buildEmbeddedAppUrl(host)
-      : `${process.env.NEXT_PUBLIC_APP_URL ?? "https://stockme.vercel.app"}/app/settings?shop=${encodeURIComponent(shop)}&billing=required`;
+      : `${process.env.NEXT_PUBLIC_APP_URL ?? "https://stockme.gentletap.co"}/app/settings?shop=${encodeURIComponent(shop)}&billing=required`;
 
     return NextResponse.redirect(redirectUrl);
   } catch (error) {

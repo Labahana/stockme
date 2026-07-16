@@ -10,5 +10,5 @@ export function resolveAppHost(request?: NextRequest) {
       // ignore invalid URL
     }
   }
-  return request?.nextUrl.host ?? "stockme.vercel.app";
+  return request?.nextUrl.host ?? "stockme.gentletap.co";
 }

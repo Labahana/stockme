@@ -1,7 +1,7 @@
 # Shopify App Store — Pre-Submission Checklist
 
 **App:** Stockme  
-**Production URL:** https://stockme.vercel.app  
+**Production URL:** https://stockme.gentletap.co  
 **Avoid:** any `stocky-*.vercel.app` host (Shopify Stocky trademark / brand confusion)  
 **Support:** support@stockme.gentletap.co  
 **Updated:** July 16, 2026
@@ -27,7 +27,7 @@
 | Item | Action |
 |------|--------|
 | **Rename off stocky-\*** | See `docs/DOMAIN_CUTOVER.md` — Vercel project → `stockme`, Partner URLs updated |
-| **NEXT_PUBLIC_APP_URL** | Production = `https://stockme.vercel.app` + redeploy |
+| **NEXT_PUBLIC_APP_URL** | Production = `https://stockme.gentletap.co` + redeploy |
 | **Real screenshots** | Replace gallery mocks with 2–3 populated demo-store captures |
 | **OAuth retest** | Full install on new host |
 | **Billing E2E** | Subscribe / upgrade / downgrade with `SHOPIFY_BILLING_TEST=true` |
@@ -37,7 +37,7 @@
 ## Production env (Vercel)
 
 ```
-NEXT_PUBLIC_APP_URL=https://stockme.vercel.app
+NEXT_PUBLIC_APP_URL=https://stockme.gentletap.co
 NEXT_PUBLIC_SHOPIFY_API_KEY=<client id>
 SHOPIFY_API_KEY=<client id>
 SHOPIFY_API_SECRET=<client secret>
@@ -47,11 +47,11 @@ SUPABASE_* / INNGEST_* / RESEND_* / CRON_SECRET
 
 ## Partner Dashboard config
 
-- **App URL:** `https://stockme.vercel.app/app`
-- **Allowed redirection URL:** `https://stockme.vercel.app/api/auth/callback`
-- **Privacy:** `https://stockme.vercel.app/privacy`
-- **Webhooks:** `https://stockme.vercel.app/api/webhooks`
-- **Website:** `https://stockme.vercel.app/`
+- **App URL:** `https://stockme.gentletap.co/app`
+- **Allowed redirection URL:** `https://stockme.gentletap.co/api/auth/callback`
+- **Privacy:** `https://stockme.gentletap.co/privacy`
+- **Webhooks:** `https://stockme.gentletap.co/api/webhooks`
+- **Website:** `https://stockme.gentletap.co/`
 - **Embedded:** Yes
 - **Use legacy install flow:** Yes (custom OAuth)
 
@@ -67,7 +67,7 @@ SUPABASE_* / INNGEST_* / RESEND_* / CRON_SECRET
 
 ## Reviewer notes (paste in submission)
 
-> Stockme replaces Shopify Stocky for POS Pro inventory workflows. Charges use the Shopify Billing API ($15/$29/$39, 14-day trial). Test charges enabled via SHOPIFY_BILLING_TEST. Embedded admin uses App Bridge session tokens. No customer PII stored. GDPR + APP_UNINSTALLED webhooks implemented. Privacy: https://stockme.vercel.app/privacy
+> Stockme replaces Shopify Stocky for POS Pro inventory workflows. Charges use the Shopify Billing API ($15/$29/$39, 14-day trial). Test charges enabled via SHOPIFY_BILLING_TEST. Embedded admin uses App Bridge session tokens. No customer PII stored. GDPR + APP_UNINSTALLED webhooks implemented. Privacy: https://stockme.gentletap.co/privacy
 
 ## Listing copy
 

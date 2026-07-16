@@ -4,9 +4,9 @@
 
 Stocky shuts down **August 31, 2026**. Stockme includes a **Stocky CSV importer** for purchase orders and suppliers.
 
-- **Production URL:** https://stockme.vercel.app (temporary; `stockme.gentletap.co` when DNS is ready)
+- **Production URL:** https://stockme.gentletap.co (temporary; `stockme.gentletap.co` when DNS is ready)
 - **Support:** support@stockme.gentletap.co
-- **Privacy:** https://stockme.vercel.app/privacy
+- **Privacy:** https://stockme.gentletap.co/privacy
 - **Do not use:** `stocky-*.vercel.app` hosts for Partner / App Store URLs
 
 ## Stack

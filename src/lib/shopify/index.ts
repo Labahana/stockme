@@ -108,7 +108,7 @@ export async function ensureStoreRecord(shop: string) {
 export async function registerWebhooks(session: Session) {
   const appUrl =
     process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ??
-    "https://stockme.vercel.app";
+    "https://stockme.gentletap.co";
   const callbackUrl = `${appUrl}/api/webhooks`;
   const client = getShopify();
 

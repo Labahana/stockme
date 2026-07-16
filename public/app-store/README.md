@@ -1,14 +1,14 @@
 # Stockme — App Store submission pack
 
-**App URL base:** https://stockme.vercel.app  
+**App URL base:** https://stockme.gentletap.co  
 **Do not use:** `stocky-rho.vercel.app` (contains Shopify product name “Stocky” — brand-confusion risk)
 
 ## Domain cutover (do this first)
 
 1. **Vercel** → Project **stocky** → Settings → General → rename project to **`stockme`**  
-   - Production host becomes `https://stockme.vercel.app` (if taken, use the alias Vercel shows, e.g. `stockme-xxx.vercel.app`, and use that everywhere below).
+   - Production host becomes `https://stockme.gentletap.co` (if taken, use the alias Vercel shows, e.g. `stockme-xxx.vercel.app`, and use that everywhere below).
 2. **Vercel → Settings → Environment Variables**  
-   - Set `NEXT_PUBLIC_APP_URL=https://stockme.vercel.app` (Production)  
+   - Set `NEXT_PUBLIC_APP_URL=https://stockme.gentletap.co` (Production)  
    - Redeploy production after saving.
 3. **Partner Dashboard → App setup / URLs** — paste the table below (all four + Website).
 4. Re-test: install OAuth → open embedded app → billing subscribe (test charge).
@@ -18,20 +18,20 @@
 | Field | Value |
 |--------|--------|
 | App name | Stockme |
-| App URL | `https://stockme.vercel.app/app` |
-| Redirect URL | `https://stockme.vercel.app/api/auth/callback` |
+| App URL | `https://stockme.gentletap.co/app` |
+| Redirect URL | `https://stockme.gentletap.co/api/auth/callback` |
 | Embedded | Yes |
 | Use legacy install flow | **Yes** |
 | API version | 2026-07 |
 | Scopes | `write_inventory,read_inventory,read_locations,read_orders,read_products,write_products` |
-| GDPR / webhooks | `https://stockme.vercel.app/api/webhooks` |
+| GDPR / webhooks | `https://stockme.gentletap.co/api/webhooks` |
 
 ## Listing URLs
 
 | Field | Value |
 |--------|--------|
-| App listing website | https://stockme.vercel.app/ |
-| Privacy policy | https://stockme.vercel.app/privacy |
+| App listing website | https://stockme.gentletap.co/ |
+| Privacy policy | https://stockme.gentletap.co/privacy |
 | Support email | support@stockme.gentletap.co |
 
 ## Assets in this folder
@@ -86,12 +86,12 @@ Inventory · Orders and shipping · Finding products
 
 ## Reviewer notes (submission form)
 
-> Stockme replaces Shopify Stocky for POS Pro inventory workflows. Charges use the Shopify Billing API ($15/$29/$39, 14-day trial). For review, `SHOPIFY_BILLING_TEST=true` so charges are test. Embedded admin uses App Bridge session tokens. We do not store customer PII. GDPR topics `customers/data_request`, `customers/redact`, `shop/redact` and `APP_UNINSTALLED` are handled at `/api/webhooks`. Privacy: https://stockme.vercel.app/privacy · Support: support@stockme.gentletap.co
+> Stockme replaces Shopify Stocky for POS Pro inventory workflows. Charges use the Shopify Billing API ($15/$29/$39, 14-day trial). For review, `SHOPIFY_BILLING_TEST=true` so charges are test. Embedded admin uses App Bridge session tokens. We do not store customer PII. GDPR topics `customers/data_request`, `customers/redact`, `shop/redact` and `APP_UNINSTALLED` are handled at `/api/webhooks`. Privacy: https://stockme.gentletap.co/privacy · Support: support@stockme.gentletap.co
 
 ## Vercel env (must match Partner app)
 
 ```
-NEXT_PUBLIC_APP_URL=https://stockme.vercel.app
+NEXT_PUBLIC_APP_URL=https://stockme.gentletap.co
 NEXT_PUBLIC_SHOPIFY_API_KEY=<Client ID>
 SHOPIFY_API_KEY=<Client ID>
 SHOPIFY_API_SECRET=<Client Secret>
@@ -100,8 +100,8 @@ SHOPIFY_BILLING_TEST=true
 
 ## Pre-submit checklist (blocking)
 
-- [ ] Project renamed; live site opens on `stockme.vercel.app` (not `stocky-*`)
-- [ ] Partner App URL / Redirect / Webhooks / Privacy / Website all use `stockme.vercel.app`
+- [ ] Project renamed; live site opens on `stockme.gentletap.co` (not `stocky-*`)
+- [ ] Partner App URL / Redirect / Webhooks / Privacy / Website all use `stockme.gentletap.co`
 - [ ] OAuth install works end-to-end on the new host
 - [ ] Billing: subscribe → upgrade → downgrade on a dev store (test charges)
 - [ ] GDPR webhooks return 200 (Partner test tools or CLI)
