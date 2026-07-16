@@ -50,31 +50,31 @@ type BundleProductsQueryResult = {
 
 const BUNDLE_PRODUCTS_QUERY = `
   query SyncBundleProducts($cursor: String) {
-    products(first: 25, after: $cursor, query: "has_variant_with_components:true") {
+    products(first: 5, after: $cursor, query: "has_variant_with_components:true") {
       pageInfo { hasNextPage endCursor }
       edges {
         node {
           id
           hasVariantsThatRequiresComponents
-          bundleComponents(first: 250) {
+          bundleComponents(first: 25) {
             pageInfo { hasNextPage endCursor }
             nodes {
               quantity
               componentProduct {
                 id
-                variants(first: 250) {
+                variants(first: 25) {
                   nodes { id }
                 }
               }
             }
           }
-          variants(first: 250) {
+          variants(first: 25) {
             pageInfo { hasNextPage endCursor }
             edges {
               node {
                 id
                 requiresComponents
-                productVariantComponents(first: 250) {
+                productVariantComponents(first: 25) {
                   pageInfo { hasNextPage endCursor }
                   nodes {
                     quantity
@@ -95,25 +95,25 @@ const SINGLE_PRODUCT_BUNDLE_QUERY = `
     product(id: $id) {
       id
       hasVariantsThatRequiresComponents
-      bundleComponents(first: 250) {
+      bundleComponents(first: 25) {
         pageInfo { hasNextPage endCursor }
         nodes {
           quantity
           componentProduct {
             id
-            variants(first: 250) {
+            variants(first: 25) {
               nodes { id }
             }
           }
         }
       }
-      variants(first: 250) {
+      variants(first: 25) {
         pageInfo { hasNextPage endCursor }
         edges {
           node {
             id
             requiresComponents
-            productVariantComponents(first: 250) {
+            productVariantComponents(first: 25) {
               pageInfo { hasNextPage endCursor }
               nodes {
                 quantity
@@ -130,13 +130,13 @@ const SINGLE_PRODUCT_BUNDLE_QUERY = `
 const PRODUCT_VARIANTS_PAGE_QUERY = `
   query ProductVariantsPage($id: ID!, $cursor: String) {
     product(id: $id) {
-      variants(first: 250, after: $cursor) {
+      variants(first: 25, after: $cursor) {
         pageInfo { hasNextPage endCursor }
         edges {
           node {
             id
             requiresComponents
-            productVariantComponents(first: 250) {
+            productVariantComponents(first: 25) {
               pageInfo { hasNextPage endCursor }
               nodes {
                 quantity
@@ -153,7 +153,7 @@ const PRODUCT_VARIANTS_PAGE_QUERY = `
 const VARIANT_COMPONENTS_PAGE_QUERY = `
   query VariantComponentsPage($id: ID!, $cursor: String) {
     productVariant(id: $id) {
-      productVariantComponents(first: 250, after: $cursor) {
+      productVariantComponents(first: 25, after: $cursor) {
         pageInfo { hasNextPage endCursor }
         nodes {
           quantity
@@ -167,13 +167,13 @@ const VARIANT_COMPONENTS_PAGE_QUERY = `
 const BUNDLE_COMPONENTS_PAGE_QUERY = `
   query BundleComponentsPage($id: ID!, $cursor: String) {
     product(id: $id) {
-      bundleComponents(first: 250, after: $cursor) {
+      bundleComponents(first: 25, after: $cursor) {
         pageInfo { hasNextPage endCursor }
         nodes {
           quantity
           componentProduct {
             id
-            variants(first: 250) {
+            variants(first: 25) {
               nodes { id }
             }
           }

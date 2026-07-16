@@ -77,9 +77,14 @@ const LOCATIONS_QUERY = `
   }
 `;
 
+// Keep nested page sizes small — Shopify caps a single query at cost 1000.
+// 25×100 variants + inventoryItem/unitCost was ~2672 and failed force sync.
+const PRODUCTS_PAGE_SIZE = 5;
+const VARIANTS_PAGE_SIZE = 25;
+
 const PRODUCTS_QUERY = `
   query SyncProducts($cursor: String) {
-    products(first: 25, after: $cursor) {
+    products(first: ${PRODUCTS_PAGE_SIZE}, after: $cursor) {
       pageInfo { hasNextPage endCursor }
       edges {
         node {
@@ -90,7 +95,7 @@ const PRODUCTS_QUERY = `
           status
           tags
           featuredImage { url }
-          variants(first: 100) {
+          variants(first: ${VARIANTS_PAGE_SIZE}) {
             pageInfo { hasNextPage endCursor }
             edges {
               node {
@@ -116,7 +121,7 @@ const PRODUCTS_QUERY = `
 const PRODUCT_VARIANTS_QUERY = `
   query SyncProductVariants($productId: ID!, $cursor: String) {
     product(id: $productId) {
-      variants(first: 100, after: $cursor) {
+      variants(first: ${VARIANTS_PAGE_SIZE}, after: $cursor) {
         pageInfo { hasNextPage endCursor }
         edges {
           node {
@@ -256,7 +261,7 @@ export async function runCatalogSyncStep(
     };
   }
 
-  // products phase — one GraphQL page (~25 products)
+  // products phase — one GraphQL page (kept small for Shopify query-cost cap)
   const before = {
     products: local.products,
     variants: local.variants,
