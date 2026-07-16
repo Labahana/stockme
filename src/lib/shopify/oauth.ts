@@ -3,6 +3,7 @@ import { Session } from "@shopify/shopify-api";
 import { SHOPIFY_SCOPES } from "@/lib/constants";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getShopify, sanitizeShop } from "@/lib/shopify";
+import { loadOfflineSession, storeSession } from "@/lib/shopify/sessions";
 
 const STATE_TTL_MS = 10 * 60 * 1000; // 10 minutes (Shopify cookie is only 60s)
 const CALLBACK_PATH = "/api/auth/callback";
@@ -150,8 +151,10 @@ async function exchangeCodeForToken(shop: string, code: string) {
       client_id: apiKey(),
       client_secret: apiSecret(),
       code,
-      // Prefer non-expiring offline tokens for install reliability on legacy flow.
-      expiring: "0",
+      // Shopify rejects non-expiring offline tokens on the Admin API for public
+      // apps (403 "GraphQL Client: Forbidden"). Request the expiring variant so
+      // the response includes refresh_token / expires_in.
+      expiring: "1",
     }),
   });
 
@@ -219,6 +222,54 @@ export async function completeOfflineOAuth(
   const token = await exchangeCodeForToken(shop, code);
   const session = sessionFromTokenResponse(shop, state, token);
   return { session, shop };
+}
+
+async function refreshAccessToken(shop: string, refreshToken: string) {
+  const response = await fetch(`https://${shop}/admin/oauth/access_token`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({
+      client_id: apiKey(),
+      client_secret: apiSecret(),
+      grant_type: "refresh_token",
+      refresh_token: refreshToken,
+    }),
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Token refresh failed (${response.status}): ${body}`);
+  }
+
+  return (await response.json()) as AccessTokenResponse;
+}
+
+/**
+ * Exchange the stored refresh token for a new expiring offline access token.
+ * The response carries a NEW refresh token that invalidates the old one, so it
+ * is persisted atomically before returning. Returns null for legacy
+ * non-expiring installs (no refresh token) — those must re-authorize.
+ */
+export async function refreshOfflineSession(shop: string): Promise<Session | null> {
+  const existing = await loadOfflineSession(shop);
+  if (!existing?.refreshToken) return null;
+
+  const token = await refreshAccessToken(shop, existing.refreshToken);
+  const session = sessionFromTokenResponse(shop, existing.state ?? "", token);
+  await storeSession(session);
+  return session;
+}
+
+/**
+ * Legacy perpetual tokens (issued with expiring=0) are now rejected by the
+ * Admin API. They have an access token but neither an expiry nor a refresh
+ * token, so the merchant must re-authorize to mint an expiring token.
+ */
+export function isLegacyNonExpiringSession(session: Session): boolean {
+  return Boolean(session.accessToken) && !session.expires && !session.refreshToken;
 }
 
 export { CALLBACK_PATH };

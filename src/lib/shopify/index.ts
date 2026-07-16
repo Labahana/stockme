@@ -93,6 +93,35 @@ export async function loadOfflineSession(shop: string): Promise<Session | undefi
   return loadSession(sessionId);
 }
 
+/**
+ * Load the offline session, proactively refreshing the (now expiring) access
+ * token when it is within the skew window of expiry. Use this anywhere an
+ * Admin API call is about to be made.
+ */
+export async function getValidOfflineSession(
+  shop: string,
+): Promise<Session | undefined> {
+  let session = await loadOfflineSession(shop);
+  if (!session?.accessToken) return session;
+
+  const REFRESH_SKEW_MS = 2 * 60 * 1000;
+  const expiresSoon = session.expires
+    ? session.expires.getTime() - Date.now() <= REFRESH_SKEW_MS
+    : false;
+
+  if (expiresSoon && session.refreshToken) {
+    try {
+      const { refreshOfflineSession } = await import("@/lib/shopify/oauth");
+      const refreshed = await refreshOfflineSession(shop);
+      if (refreshed) session = refreshed;
+    } catch (error) {
+      console.error(`Offline token refresh failed for ${shop}:`, error);
+    }
+  }
+
+  return session;
+}
+
 export async function ensureStoreRecord(shop: string) {
   const supabase = createAdminClient();
   const { data, error } = await supabase
@@ -182,7 +211,7 @@ export async function registerWebhooks(session: Session) {
 }
 
 export async function getGraphqlClient(shop: string) {
-  const session = await loadOfflineSession(shop);
+  const session = await getValidOfflineSession(shop);
   if (!session?.accessToken) {
     throw new Error(`No offline session for ${shop}`);
   }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { loadOfflineSession, sanitizeShop } from "@/lib/shopify";
+import { isLegacyNonExpiringSession } from "@/lib/shopify/oauth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { assertSkuLimit } from "@/lib/billing/limits";
 import { continueChunkedSync, queueOrRunFullSync } from "@/lib/sync/queue-full-sync";
@@ -17,6 +18,16 @@ export async function POST(request: NextRequest) {
   const session = await loadOfflineSession(shop);
   if (!session) {
     return NextResponse.json({ error: "Not installed" }, { status: 401 });
+  }
+  if (isLegacyNonExpiringSession(session)) {
+    return NextResponse.json(
+      {
+        error:
+          "Reconnect required: this store still holds a legacy access token that Shopify no longer accepts. Reinstall the app to reconnect.",
+        code: "REAUTH_REQUIRED",
+      },
+      { status: 409 },
+    );
   }
 
   const supabase = createAdminClient();
