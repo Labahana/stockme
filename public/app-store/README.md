@@ -44,13 +44,29 @@
 | `../brand/stockme-mark.svg` | Site mark (icon only) | Colored cube, transparent |
 | `../brand/stockme-logo.svg` | Site logo (icon + Stockme) | Transparent SVG |
 | `stockme-feature-graphic.png` | Feature / gallery hero | 16:9 |
-| `stockme-screenshot-inventory.png` | Gallery screenshot 1 | 16:9 — **replace with real demo** |
-| `stockme-screenshot-purchase-orders.png` | Gallery screenshot 2 | 16:9 — **replace with real demo** |
-| `stockme-screenshot-scan-receive.png` | Gallery screenshot 3 | 16:9 — **replace with real demo** |
-| `stockme-screenshot-pricing.png` | Gallery screenshot 4 | 16:9 — optional / pricing UI |
+| `stockme-desktop-1-inventory.png` | **Desktop screenshot 1** | **1600×900** |
+| `stockme-desktop-2-purchase-orders.png` | **Desktop screenshot 2** | **1600×900** |
+| `stockme-desktop-3-scan-receive.png` | **Desktop screenshot 3** | **1600×900** |
+| `stockme-desktop-4-pricing.png` | Desktop screenshot 4 (optional) | **1600×900** |
+| `stockme-screenshot-inventory.png` | Source mock (wrong size) | 1536×1024 — do not upload |
+| `stockme-screenshot-purchase-orders.png` | Source mock (wrong size) | 1536×1024 — do not upload |
+| `stockme-screenshot-scan-receive.png` | Source mock (wrong size) | 1536×1024 — do not upload |
+| `stockme-screenshot-pricing.png` | Source mock (wrong size) | 1536×1024 — do not upload |
 | `stockme-homepage.png` | Optional (marketing page) | Live site capture |
 
-> **BLOCKING:** Current gallery PNGs are marketing mocks. Do **not** submit until Gallery #1–3 are real screenshots from a populated demo store (inventory list, PO detail/receive, stocktake or report). Empty states and Lorem Ipsum will fail review.
+### Desktop screenshots — upload these (Partner Dashboard)
+
+Shopify requires **exactly 1600×900**. Files live in `public/app-store/`:
+
+| # | File | Alt text (≤64 chars) — paste as-is |
+|---|------|-------------------------------------|
+| 1 | `stockme-desktop-1-inventory.png` | Inventory list with stock levels and filters |
+| 2 | `stockme-desktop-2-purchase-orders.png` | Purchase orders list with forecast suggestions |
+| 3 | `stockme-desktop-3-scan-receive.png` | Barcode scan-to-receive on a purchase order |
+
+Optional 4th: `stockme-desktop-4-pricing.png` — alt: `Starter Growth and Pro billing plans`
+
+> **BLOCKING:** These are still marketing mocks. Prefer replacing #1–3 with real 1600×900 captures from a populated demo store before final submit. Empty states and Lorem Ipsum can fail review.
 
 ## Listing copy (paste)
 
