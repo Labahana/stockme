@@ -131,6 +131,11 @@ export function PurchaseOrdersPageClient() {
     });
 
   const runForecast = async () => {
+    if (!locationId) {
+      setError("Select a location before running a forecast");
+      return;
+    }
+    setError(null);
     const res = await shopFetch("/api/purchase-orders", shop, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

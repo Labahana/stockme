@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { loadOfflineSession, sanitizeShop } from "@/lib/shopify";
-import { isLegacyNonExpiringSession } from "@/lib/shopify/oauth";
+import { ensureExpiringOfflineSession } from "@/lib/shopify/oauth";
 import { billingBypassEnabled } from "@/lib/billing/plans";
 import { BILLING_DISABLED_FOR_DEMO } from "@/lib/constants";
 import {
@@ -82,11 +82,14 @@ export async function resolveShopContext(
   if (isNextResponse(shopOrError)) return shopOrError;
   const shop = shopOrError;
 
-  const session = await loadOfflineSession(shop);
-  if (!session?.accessToken) {
+  // Auto-migrate legacy non-expiring offline tokens via Shopify token exchange
+  // instead of hard-failing every /api/inventory call with 409.
+  const installed = await loadOfflineSession(shop);
+  if (!installed?.accessToken) {
     return NextResponse.json({ error: "App not installed for this shop" }, { status: 401 });
   }
-  if (isLegacyNonExpiringSession(session)) {
+  const session = await ensureExpiringOfflineSession(shop);
+  if (!session?.accessToken) {
     return NextResponse.json(
       {
         error:

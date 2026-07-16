@@ -10,6 +10,12 @@ import { assertForecastMethodAllowed } from "@/lib/billing/limits";
 
 export const dynamic = "force-dynamic";
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function isUuid(value: unknown): value is string {
+  return typeof value === "string" && UUID_RE.test(value);
+}
+
 const createPoSchema = z.object({
   supplierId: z.string().uuid(),
   locationId: z.string().uuid(),
@@ -110,11 +116,17 @@ export async function POST(request: NextRequest) {
       if (blocked) {
         return NextResponse.json({ error: blocked }, { status: 403 });
       }
+      if (!isUuid(body.locationId)) {
+        return NextResponse.json({ error: "Select a location first" }, { status: 400 });
+      }
+      if (body.supplierId != null && body.supplierId !== "" && !isUuid(body.supplierId)) {
+        return NextResponse.json({ error: "Invalid supplier" }, { status: 400 });
+      }
       const lines = await computeForecastLines(
         ctx.shop,
         ctx.store.id,
         body.locationId,
-        body.supplierId ?? null,
+        isUuid(body.supplierId) ? body.supplierId : null,
         {
           method: body.method as ForecastMethod,
           days: body.days,

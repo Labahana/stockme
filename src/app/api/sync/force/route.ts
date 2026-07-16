@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { loadOfflineSession, sanitizeShop } from "@/lib/shopify";
-import { isLegacyNonExpiringSession } from "@/lib/shopify/oauth";
+import { ensureExpiringOfflineSession } from "@/lib/shopify/oauth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { assertSkuLimit } from "@/lib/billing/limits";
 import { continueChunkedSync, queueOrRunFullSync } from "@/lib/sync/queue-full-sync";
@@ -15,11 +15,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid shop" }, { status: 400 });
   }
 
-  const session = await loadOfflineSession(shop);
-  if (!session) {
-    return NextResponse.json({ error: "Not installed" }, { status: 401 });
-  }
-  if (isLegacyNonExpiringSession(session)) {
+  const session = await ensureExpiringOfflineSession(shop);
+  if (!session?.accessToken) {
+    const installed = await loadOfflineSession(shop);
+    if (!installed) {
+      return NextResponse.json({ error: "Not installed" }, { status: 401 });
+    }
     return NextResponse.json(
       {
         error:

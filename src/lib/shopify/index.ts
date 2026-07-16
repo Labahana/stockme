@@ -101,7 +101,12 @@ export async function loadOfflineSession(shop: string): Promise<Session | undefi
 export async function getValidOfflineSession(
   shop: string,
 ): Promise<Session | undefined> {
-  let session = await loadOfflineSession(shop);
+  const { ensureExpiringOfflineSession, refreshOfflineSession } = await import(
+    "@/lib/shopify/oauth"
+  );
+
+  // Migrate legacy non-expiring tokens before any Admin API call.
+  let session = (await ensureExpiringOfflineSession(shop)) ?? undefined;
   if (!session?.accessToken) return session;
 
   const REFRESH_SKEW_MS = 2 * 60 * 1000;
@@ -111,7 +116,6 @@ export async function getValidOfflineSession(
 
   if (expiresSoon && session.refreshToken) {
     try {
-      const { refreshOfflineSession } = await import("@/lib/shopify/oauth");
       const refreshed = await refreshOfflineSession(shop);
       if (refreshed) session = refreshed;
     } catch (error) {

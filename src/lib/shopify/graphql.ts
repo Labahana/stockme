@@ -13,6 +13,10 @@ export async function shopifyGql<T>(
     const messages = Array.isArray(response.errors)
       ? response.errors.map((e: { message?: string }) => e.message ?? "GraphQL error")
       : [String(response.errors)];
+    console.error(
+      "Shopify GraphQL errors:",
+      JSON.stringify(response.errors, null, 2),
+    );
     throw new Error(messages.join("; "));
   }
 

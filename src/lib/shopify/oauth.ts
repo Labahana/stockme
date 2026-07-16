@@ -140,30 +140,48 @@ type AccessTokenResponse = {
   associated_user?: unknown;
 };
 
-async function exchangeCodeForToken(shop: string, code: string) {
+/**
+ * Shopify's /admin/oauth/access_token endpoint expects
+ * application/x-www-form-urlencoded (see offline access token docs).
+ * JSON bodies often ignore `expiring=1`, which leaves legacy non-expiring
+ * tokens and causes Admin API 403 + our API 409 REAUTH_REQUIRED loop.
+ */
+async function postAccessToken(
+  shop: string,
+  params: Record<string, string>,
+  errorLabel: string,
+): Promise<AccessTokenResponse> {
+  const body = new URLSearchParams(params);
   const response = await fetch(`https://${shop}/admin/oauth/access_token`, {
     method: "POST",
     headers: {
-      "Content-Type": "application/json",
+      "Content-Type": "application/x-www-form-urlencoded",
       Accept: "application/json",
     },
-    body: JSON.stringify({
-      client_id: apiKey(),
-      client_secret: apiSecret(),
-      code,
-      // Shopify rejects non-expiring offline tokens on the Admin API for public
-      // apps (403 "GraphQL Client: Forbidden"). Request the expiring variant so
-      // the response includes refresh_token / expires_in.
-      expiring: "1",
-    }),
+    body,
   });
 
   if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`Token exchange failed (${response.status}): ${body}`);
+    const text = await response.text();
+    throw new Error(`${errorLabel} (${response.status}): ${text}`);
   }
 
   return (await response.json()) as AccessTokenResponse;
+}
+
+async function exchangeCodeForToken(shop: string, code: string) {
+  // Public apps must request expiring offline tokens (expiring=1).
+  // https://shopify.dev/docs/apps/build/authentication-authorization/access-tokens/offline-access-tokens
+  return postAccessToken(
+    shop,
+    {
+      client_id: apiKey(),
+      client_secret: apiSecret(),
+      code,
+      expiring: "1",
+    },
+    "Token exchange failed",
+  );
 }
 
 function sessionFromTokenResponse(
@@ -183,13 +201,24 @@ function sessionFromTokenResponse(
   if (token.expires_in) {
     session.expires = new Date(Date.now() + token.expires_in * 1000);
   }
-  if (token.refresh_token && token.refresh_token_expires_in) {
+  // Persist refresh_token even if Shopify omits refresh_token_expires_in.
+  if (token.refresh_token) {
     session.refreshToken = token.refresh_token;
-    session.refreshTokenExpires = new Date(
-      Date.now() + token.refresh_token_expires_in * 1000,
-    );
+    if (token.refresh_token_expires_in) {
+      session.refreshTokenExpires = new Date(
+        Date.now() + token.refresh_token_expires_in * 1000,
+      );
+    }
   }
   return session;
+}
+
+function assertExpiringToken(token: AccessTokenResponse, context: string) {
+  if (!token.expires_in || !token.refresh_token) {
+    throw new Error(
+      `${context}: Shopify returned a non-expiring offline token (missing expires_in/refresh_token). Re-check expiring=1 on the token request.`,
+    );
+  }
 }
 
 export type OAuthCallbackResult = {
@@ -220,53 +249,106 @@ export async function completeOfflineOAuth(
   }
 
   const token = await exchangeCodeForToken(shop, code);
+  assertExpiringToken(token, "OAuth install");
   const session = sessionFromTokenResponse(shop, state, token);
   return { session, shop };
 }
 
 async function refreshAccessToken(shop: string, refreshToken: string) {
-  const response = await fetch(`https://${shop}/admin/oauth/access_token`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify({
+  return postAccessToken(
+    shop,
+    {
       client_id: apiKey(),
       client_secret: apiSecret(),
       grant_type: "refresh_token",
       refresh_token: refreshToken,
-    }),
-  });
+    },
+    "Token refresh failed",
+  );
+}
 
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`Token refresh failed (${response.status}): ${body}`);
-  }
-
-  return (await response.json()) as AccessTokenResponse;
+/**
+ * Migrate a legacy non-expiring offline token to an expiring one via token
+ * exchange (no merchant reinstall required). Irreversible per shop.
+ * https://shopify.dev/docs/apps/build/authentication-authorization/access-tokens/offline-access-tokens
+ */
+async function exchangeLegacyTokenForExpiring(shop: string, offlineToken: string) {
+  const token = await postAccessToken(
+    shop,
+    {
+      client_id: apiKey(),
+      client_secret: apiSecret(),
+      grant_type: "urn:ietf:params:oauth:grant-type:token-exchange",
+      subject_token: offlineToken,
+      subject_token_type: "urn:shopify:params:oauth:token-type:offline-access-token",
+      requested_token_type:
+        "urn:shopify:params:oauth:token-type:offline-access-token",
+      expiring: "1",
+    },
+    "Legacy token migration failed",
+  );
+  assertExpiringToken(token, "Legacy token migration");
+  return token;
 }
 
 /**
  * Exchange the stored refresh token for a new expiring offline access token.
  * The response carries a NEW refresh token that invalidates the old one, so it
  * is persisted atomically before returning. Returns null for legacy
- * non-expiring installs (no refresh token) — those must re-authorize.
+ * non-expiring installs (no refresh token) — those should use
+ * migrateLegacyOfflineSession / ensureExpiringOfflineSession.
  */
 export async function refreshOfflineSession(shop: string): Promise<Session | null> {
   const existing = await loadOfflineSession(shop);
   if (!existing?.refreshToken) return null;
 
   const token = await refreshAccessToken(shop, existing.refreshToken);
+  assertExpiringToken(token, "Token refresh");
   const session = sessionFromTokenResponse(shop, existing.state ?? "", token);
   await storeSession(session);
   return session;
 }
 
 /**
- * Legacy perpetual tokens (issued with expiring=0) are now rejected by the
- * Admin API. They have an access token but neither an expiry nor a refresh
- * token, so the merchant must re-authorize to mint an expiring token.
+ * One-shot migration: exchange a stored non-expiring offline token for an
+ * expiring access + refresh token pair and persist it.
+ */
+export async function migrateLegacyOfflineSession(
+  shop: string,
+): Promise<Session | null> {
+  const existing = await loadOfflineSession(shop);
+  if (!existing?.accessToken) return null;
+  if (!isLegacyNonExpiringSession(existing)) return existing;
+
+  const token = await exchangeLegacyTokenForExpiring(shop, existing.accessToken);
+  const session = sessionFromTokenResponse(shop, existing.state ?? "", token);
+  await storeSession(session);
+  return session;
+}
+
+/**
+ * Ensure the shop has an expiring offline session. Migrates legacy tokens
+ * in place when possible; returns null only when migration is impossible.
+ */
+export async function ensureExpiringOfflineSession(
+  shop: string,
+): Promise<Session | null> {
+  const existing = await loadOfflineSession(shop);
+  if (!existing?.accessToken) return null;
+  if (!isLegacyNonExpiringSession(existing)) return existing;
+
+  try {
+    return await migrateLegacyOfflineSession(shop);
+  } catch (error) {
+    console.error(`Legacy offline token migration failed for ${shop}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Legacy perpetual tokens (issued with expiring=0) are rejected by the Admin
+ * API for public apps. Detected when we have an access token but neither
+ * expires nor a refresh token.
  */
 export function isLegacyNonExpiringSession(session: Session): boolean {
   return Boolean(session.accessToken) && !session.expires && !session.refreshToken;

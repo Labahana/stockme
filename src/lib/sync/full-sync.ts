@@ -142,6 +142,8 @@ const PRODUCT_VARIANTS_QUERY = `
   }
 `;
 
+// InventoryLevel.available was removed; use quantities(names: [...]) on API 2026-07+.
+// https://shopify.dev/docs/api/admin-graphql/latest/objects/InventoryLevel
 const VARIANT_INVENTORY_QUERY = `
   query SyncVariantInventory($itemId: ID!, $cursor: String) {
     inventoryItem(id: $itemId) {
@@ -150,7 +152,10 @@ const VARIANT_INVENTORY_QUERY = `
         edges {
           node {
             id
-            available
+            quantities(names: ["available", "on_hand", "committed"]) {
+              name
+              quantity
+            }
             location { id }
           }
         }
@@ -159,16 +164,29 @@ const VARIANT_INVENTORY_QUERY = `
   }
 `;
 
+type InventoryQuantity = { name: string; quantity: number };
+
 type VariantInventoryQueryResult = {
   inventoryItem: {
     inventoryLevels: {
       pageInfo: { hasNextPage: boolean; endCursor: string | null };
       edges: {
-        node: { id: string; available: number; location: { id: string } };
+        node: {
+          id: string;
+          quantities: InventoryQuantity[];
+          location: { id: string };
+        };
       }[];
     };
   };
 };
+
+function qtyNamed(
+  quantities: InventoryQuantity[] | null | undefined,
+  name: string,
+): number {
+  return quantities?.find((q) => q.name === name)?.quantity ?? 0;
+}
 
 export async function runFullCatalogSync(
   shop: string,
@@ -486,13 +504,16 @@ async function syncInventoryLevels(
       .map(({ node }) => {
         const locationId = locationMap.get(parseShopifyGid(node.location.id));
         if (!locationId) return null;
+        const available = qtyNamed(node.quantities, "available");
+        const onHand = qtyNamed(node.quantities, "on_hand");
+        const committed = qtyNamed(node.quantities, "committed");
         return {
           shop_id: shopId,
           variant_id: variantId,
           location_id: locationId,
-          available: node.available,
-          committed: 0,
-          on_hand: node.available,
+          available,
+          committed,
+          on_hand: onHand || available,
           shopify_inventory_level_id: node.id,
         };
       })
