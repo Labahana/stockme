@@ -1,10 +1,12 @@
 # Shopify App Store — Pre-Submission Checklist
 
 **App:** Stockme  
-**URL:** https://stockme.gentletap.co (also `https://stocky-rho.vercel.app`)  
-**Review date:** July 14, 2026
+**Production URL:** https://stockme.vercel.app  
+**Avoid:** any `stocky-*.vercel.app` host (Shopify Stocky trademark / brand confusion)  
+**Support:** support@stockme.gentletap.co  
+**Updated:** July 16, 2026
 
-## Ready ✅
+## Ready ✅ (codebase)
 
 | Requirement | Status | Notes |
 |-------------|--------|-------|
@@ -14,27 +16,28 @@
 | BillingGuard + PlanGate | ✅ | Redirect to Settings when unpaid; feature gates by plan |
 | Webhook HMAC validation | ✅ | `/api/webhooks` |
 | APP_UNINSTALLED handler | ✅ | Deletes sessions |
-| GDPR webhooks | ✅ | `customers/data_request`, `customers/redact`, `shop/redact` |
+| GDPR webhooks | ✅ | `customers/data_request`, `customers/redact`, `shop/redact` (HMAC + 200; shop/redact deletes store data) |
 | Privacy policy URL | ✅ | `/privacy` |
 | Scoped data access | ✅ | Products, inventory, locations, orders (read) only |
 | GraphQL Admin API | ✅ | No REST Admin |
+| Brand mark / App icon | ✅ | Inventory cube on #0D7377 |
 
-## Before submit ⚠️
+## Blocking before submit ❌
 
 | Item | Action |
 |------|--------|
-| **SHOPIFY_BILLING_TEST** | `true` for App Store review; `false` after approval for live charges |
-| **Vercel Shopify secrets** | Match new Partner Client ID / Secret |
-| **Legacy install flow** | Enabled in Partner app version + matching callback URL |
-| **App Store listing** | Icon 1200×1200, 3–5 screenshots, pricing copy |
-| **Demo store + screencast** | Reviewer credentials + short walkthrough |
-| **Support email** | support@stockme.gentletap.co — respond within 2 business days |
-| **Partner AI self-review** | Run in Distribution before submit |
+| **Rename off stocky-\*** | See `docs/DOMAIN_CUTOVER.md` — Vercel project → `stockme`, Partner URLs updated |
+| **NEXT_PUBLIC_APP_URL** | Production = `https://stockme.vercel.app` + redeploy |
+| **Real screenshots** | Replace gallery mocks with 2–3 populated demo-store captures |
+| **OAuth retest** | Full install on new host |
+| **Billing E2E** | Subscribe / upgrade / downgrade with `SHOPIFY_BILLING_TEST=true` |
+| **GDPR test fire** | Partner Dashboard or CLI → confirm 200s |
+| **Support inbox** | Send a real email to support@stockme.gentletap.co |
 
 ## Production env (Vercel)
 
 ```
-NEXT_PUBLIC_APP_URL=https://stocky-rho.vercel.app
+NEXT_PUBLIC_APP_URL=https://stockme.vercel.app
 NEXT_PUBLIC_SHOPIFY_API_KEY=<client id>
 SHOPIFY_API_KEY=<client id>
 SHOPIFY_API_SECRET=<client secret>
@@ -44,11 +47,13 @@ SUPABASE_* / INNGEST_* / RESEND_* / CRON_SECRET
 
 ## Partner Dashboard config
 
-- **App URL:** `https://stocky-rho.vercel.app/app`
-- **Allowed redirection URL:** `https://stocky-rho.vercel.app/api/auth/callback`
+- **App URL:** `https://stockme.vercel.app/app`
+- **Allowed redirection URL:** `https://stockme.vercel.app/api/auth/callback`
+- **Privacy:** `https://stockme.vercel.app/privacy`
+- **Webhooks:** `https://stockme.vercel.app/api/webhooks`
+- **Website:** `https://stockme.vercel.app/`
 - **Embedded:** Yes
 - **Use legacy install flow:** Yes (custom OAuth)
-- **GDPR webhooks:** Registered on install
 
 ## Pre-submit smoke test
 
@@ -62,4 +67,12 @@ SUPABASE_* / INNGEST_* / RESEND_* / CRON_SECRET
 
 ## Reviewer notes (paste in submission)
 
-> Stockme replaces Shopify Stocky for POS Pro inventory workflows. Charges use the Shopify Billing API ($15/$29/$39, 14-day trial). Test charges enabled via SHOPIFY_BILLING_TEST. Embedded admin uses App Bridge session tokens. No customer PII stored. GDPR + APP_UNINSTALLED webhooks implemented. Privacy: https://stockme.gentletap.co/privacy
+> Stockme replaces Shopify Stocky for POS Pro inventory workflows. Charges use the Shopify Billing API ($15/$29/$39, 14-day trial). Test charges enabled via SHOPIFY_BILLING_TEST. Embedded admin uses App Bridge session tokens. No customer PII stored. GDPR + APP_UNINSTALLED webhooks implemented. Privacy: https://stockme.vercel.app/privacy
+
+## Listing copy
+
+Paste from `public/app-store/README.md` (tagline, introduction, features, how it works, pricing).
+
+## Do not select
+
+Built for Shopify on the first submission.

@@ -31,7 +31,8 @@ export default function PrivacyPage() {
           <p>
             {APP_NAME} (&quot;we&quot;, &quot;us&quot;) is operated by GentleTap. This policy
             describes how we handle data when you install and use our Shopify app at{" "}
-            <strong>stockme.gentletap.co</strong>.
+            <strong>stockme.vercel.app</strong>
+            {" "}(operated by GentleTap).
           </p>
 
           <h2 className="pt-4 text-xl font-semibold text-[#1a2e28]">Data we collect</h2>

@@ -10,7 +10,7 @@ const CALLBACK_PATH = "/api/auth/callback";
 function appBaseUrl() {
   return (
     process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ??
-    "https://stocky-rho.vercel.app"
+    "https://stockme.vercel.app"
   );
 }
 
