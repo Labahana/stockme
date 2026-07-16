@@ -6,14 +6,17 @@ const SIZES: Record<
   Size,
   { mark: number; text: string; gap: string }
 > = {
-  sm: { mark: 28, text: "text-base", gap: "gap-2" },
-  md: { mark: 34, text: "text-lg", gap: "gap-2.5" },
-  lg: { mark: 44, text: "text-2xl", gap: "gap-3" },
+  sm: { mark: 26, text: "text-base", gap: "gap-2" },
+  md: { mark: 32, text: "text-lg", gap: "gap-2.5" },
+  lg: { mark: 40, text: "text-2xl", gap: "gap-3" },
 };
 
-/** 3-layer isometric stock mark (icon only). */
+/**
+ * Brand mark — isometric inventory cube with open stock shelves.
+ * Matches App Store icon language; uses brand teals on transparent ground.
+ */
 export function StockmeMark({
-  size = 34,
+  size = 32,
   className = "",
 }: {
   size?: number;
@@ -22,31 +25,22 @@ export function StockmeMark({
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 512 512"
+      viewBox="0 0 64 64"
       width={size}
       height={size}
       className={className}
       aria-hidden
     >
-      <rect width="512" height="512" fill="none" />
-      <g transform="translate(256, 276)">
-        {/* Layer 1 (bottom) */}
-        <polygon points="-65,52 0,91 65,52 0,13" fill="#0D7377" />
-        <polygon points="0,91 65,52 65,-23 0,16" fill="#08555A" />
-        {/* White separator 1 */}
-        <polygon points="-65,13 0,52 65,13 0,-26" fill="#FFFFFF" />
-        <polygon points="0,52 65,13 65,-22 0,17" fill="#E6F5F5" />
-        {/* Layer 2 (middle) */}
-        <polygon points="-65,-26 0,13 65,-26 0,-65" fill="#0D7377" />
-        <polygon points="0,13 65,-26 65,-101 0,-62" fill="#08555A" />
-        {/* White separator 2 */}
-        <polygon points="-65,-65 0,-26 65,-65 0,-104" fill="#FFFFFF" />
-        <polygon points="0,-26 65,-65 65,-100 0,-61" fill="#E6F5F5" />
-        {/* Layer 3 (top) */}
-        <polygon points="-65,-104 0,-65 65,-104 0,-143" fill="#0D7377" />
-        <polygon points="0,-65 65,-104 65,-179 0,-140" fill="#08555A" />
-        <polygon points="0,-143 65,-104 0,-65 -65,-104" fill="#14A085" />
-      </g>
+      {/* Top */}
+      <polygon points="32,10 50,20 32,30 14,20" fill="#14A085" />
+      {/* Right */}
+      <polygon points="32,30 50,20 50,44 32,54" fill="#08555A" />
+      {/* Front panel (recessed shelves show brand teal) */}
+      <polygon points="14,20 32,30 32,54 14,44" fill="#0D7377" />
+      {/* Three stock shelves */}
+      <polygon points="17,26 29,33 29,36.5 17,29.5" fill="#FFFFFF" />
+      <polygon points="17,34 29,41 29,44.5 17,37.5" fill="#E6F5F5" />
+      <polygon points="17,42 29,49 29,52.5 17,45.5" fill="#FFFFFF" />
     </svg>
   );
 }

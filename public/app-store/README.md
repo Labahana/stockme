@@ -28,10 +28,10 @@
 
 | File | Use in Partner Dashboard | Spec |
 |------|--------------------------|------|
-| `stockme-app-icon-1200.png` | **App icon** | 1200×1200 — 3-layer isometric mark |
-| `stockme-app-icon.svg` | Source for app icon | Same mark, vector |
-| `stockme-favicon.png` | Favicon / small logo | Same mark as app icon |
-| `../brand/stockme-mark.svg` | Site mark (icon only) | Transparent SVG |
+| `stockme-app-icon-1200.png` | **App icon** | 1200×1200 — inventory cube on #0D7377 |
+| `stockme-app-icon.svg` | Vector app-icon variant | Cube mark on brand field |
+| `stockme-favicon.png` | Favicon / small logo | Same as app icon |
+| `../brand/stockme-mark.svg` | Site mark (icon only) | Colored cube, transparent |
 | `../brand/stockme-logo.svg` | Site logo (icon + Stockme) | Transparent SVG |
 | `stockme-feature-graphic.png` | Feature / gallery hero | 16:9 |
 | `stockme-screenshot-inventory.png` | Gallery screenshot 1 | 16:9 |
