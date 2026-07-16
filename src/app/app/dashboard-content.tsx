@@ -14,7 +14,7 @@ import {
 } from "@shopify/polaris";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { apiUrl, shopFetch } from "@/lib/hooks/use-shop";
+import { shopFetch } from "@/lib/hooks/use-shop";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { LowStockAlert } from "@/components/inventory/LowStockAlert";
 

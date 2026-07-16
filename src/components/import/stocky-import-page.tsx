@@ -14,7 +14,7 @@ import {
   Text,
 } from "@shopify/polaris";
 import { StreamingUploader } from "@/components/csv-import/StreamingUploader";
-import { apiUrl, useShop, shopFetch } from "@/lib/hooks/use-shop";
+import { apiUrl, useShop } from "@/lib/hooks/use-shop";
 
 type ImportType = "suppliers" | "purchase_orders";
 

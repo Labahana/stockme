@@ -11,7 +11,7 @@ import {
   Text,
 } from "@shopify/polaris";
 import { CSVChunkReader } from "@/lib/csv-chunk-reader";
-import { apiUrl, shopFetch } from "@/lib/hooks/use-shop";
+import { shopFetch } from "@/lib/hooks/use-shop";
 
 type UploadState = {
   status: "idle" | "uploading" | "complete" | "error";
