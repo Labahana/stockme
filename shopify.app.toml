@@ -1,35 +1,34 @@
-# Learn more: https://shopify.dev/docs/apps/tools/cli/configuration
-# Deploy with: shopify app deploy  (required for App Store automated compliance checks)
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
-name = "Stockme"
-handle = "stockme"
 client_id = "daebef5eed493fc662878c8bd660bb0c"
+name = "stockme"
 application_url = "https://stockme.gentletap.co/api/auth"
 embedded = true
-
-[access_scopes]
-scopes = "read_products,write_products,read_inventory,write_inventory,read_locations,read_orders"
-
-[auth]
-redirect_urls = [
-  "https://stockme.gentletap.co/api/auth/callback"
-]
 
 [webhooks]
 api_version = "2026-07"
 
-  # App-specific mandatory compliance webhooks (App Store automated checks)
   [[webhooks.subscriptions]]
-  compliance_topics = ["customers/data_request", "customers/redact", "shop/redact"]
   uri = "https://stockme.gentletap.co/api/webhooks"
+  compliance_topics = [ "customers/data_request", "customers/redact", "shop/redact" ]
+  topics = [
+  "app/uninstalled",
+  "app_subscriptions/update",
+  "inventory_levels/update",
+  "products/create",
+  "products/delete",
+  "products/update"
+]
 
-  [[webhooks.subscriptions]]
-  topics = ["app/uninstalled"]
-  uri = "https://stockme.gentletap.co/api/webhooks"
+[access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "write_inventory,read_inventory,read_locations,read_orders,read_products,write_products"
+optional_scopes = [ ]
+# Required false so app-specific compliance webhooks can be deployed (App Store automated checks).
+use_legacy_install_flow = false
 
-  [[webhooks.subscriptions]]
-  topics = ["products/create", "products/update", "products/delete", "inventory_levels/update", "app_subscriptions/update"]
-  uri = "https://stockme.gentletap.co/api/webhooks"
+[auth]
+redirect_urls = [ "https://stockme.gentletap.co/api/auth/callback" ]
 
 [pos]
 embedded = false
