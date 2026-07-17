@@ -47,10 +47,10 @@ SUPABASE_* / INNGEST_* / RESEND_* / CRON_SECRET
 
 ## Partner Dashboard config
 
-- **App URL:** `https://stockme.gentletap.co/app`
+- **App URL:** `https://stockme.gentletap.co/api/auth` (must 302 to OAuth — App Store automated check)
 - **Allowed redirection URL:** `https://stockme.gentletap.co/api/auth/callback`
 - **Privacy:** `https://stockme.gentletap.co/privacy`
-- **Webhooks:** `https://stockme.gentletap.co/api/webhooks`
+- **Webhooks / GDPR:** `https://stockme.gentletap.co/api/webhooks` — declare in `shopify.app.toml` and run `shopify app deploy`
 - **Website:** `https://stockme.gentletap.co/`
 - **Embedded:** Yes
 - **Use legacy install flow:** Yes (custom OAuth)

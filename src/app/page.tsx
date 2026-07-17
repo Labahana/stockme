@@ -93,15 +93,12 @@ export default function HomePage({
   const shop = searchParams.shop?.trim();
   const host = searchParams.host?.trim();
 
-  if (shop && host) {
-    redirect(
-      `/app?shop=${encodeURIComponent(shop)}&host=${encodeURIComponent(host)}`,
-    );
+  // App Store / install entry: never show marketing UI before OAuth.
+  if (shop) {
+    const params = new URLSearchParams({ shop });
+    if (host) params.set("host", host);
+    redirect(`/api/auth?${params.toString()}`);
   }
-
-  const installHref = shop
-    ? `/api/auth?shop=${encodeURIComponent(shop)}`
-    : null;
 
   return (
     <main className="stockme-marketing min-h-screen text-[#1a2e28]">
@@ -144,18 +141,9 @@ export default function HomePage({
           </div>
 
           <div className="mt-8 flex flex-wrap items-center justify-center gap-4 sm:justify-start">
-            {installHref ? (
-              <Link
-                href={installHref}
-                  className="inline-flex rounded-xl bg-[#0D7377] px-7 py-3 text-base font-semibold text-white shadow-[0_10px_24px_-8px_rgba(13,115,119,0.65)] transition hover:bg-[#08555A]"
-              >
-                Install on {shop}
-              </Link>
-            ) : (
-              <span className="inline-flex rounded-xl border border-[#c5ddd3] bg-white/90 px-5 py-3 text-sm text-[#4a6b62]">
-                Install from the Shopify App Store, or open from your Shopify admin.
-              </span>
-            )}
+            <span className="inline-flex rounded-xl border border-[#c5ddd3] bg-white/90 px-5 py-3 text-sm text-[#4a6b62]">
+              Install from the Shopify App Store, or open from your Shopify admin.
+            </span>
             <Link
               href="/privacy"
               className="text-sm font-medium text-[#0D7377] underline-offset-4 hover:underline"

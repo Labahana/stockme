@@ -188,29 +188,10 @@ export async function registerWebhooks(session: Session) {
         callback: async () => undefined,
       },
     ],
-    CUSTOMERS_DATA_REQUEST: [
-      {
-        deliveryMethod: DeliveryMethod.Http,
-        callbackUrl,
-        callback: async () => undefined,
-      },
-    ],
-    CUSTOMERS_REDACT: [
-      {
-        deliveryMethod: DeliveryMethod.Http,
-        callbackUrl,
-        callback: async () => undefined,
-      },
-    ],
-    SHOP_REDACT: [
-      {
-        deliveryMethod: DeliveryMethod.Http,
-        callbackUrl,
-        callback: async () => undefined,
-      },
-    ],
   });
 
+  // Compliance topics (customers/data_request, customers/redact, shop/redact)
+  // must be app-specific via shopify.app.toml — not registered per-install.
   await client.webhooks.register({ session });
 }
 

@@ -18,13 +18,13 @@
 | Field | Value |
 |--------|--------|
 | App name | Stockme |
-| App URL | `https://stockme.gentletap.co/app` |
+| App URL | `https://stockme.gentletap.co/api/auth` |
 | Redirect URL | `https://stockme.gentletap.co/api/auth/callback` |
 | Embedded | Yes |
 | Use legacy install flow | **Yes** |
 | API version | 2026-07 |
 | Scopes | `write_inventory,read_inventory,read_locations,read_orders,read_products,write_products` |
-| GDPR / webhooks | `https://stockme.gentletap.co/api/webhooks` |
+| GDPR / webhooks | `https://stockme.gentletap.co/api/webhooks` (also in `shopify.app.toml` — run `shopify app deploy`) |
 
 ## Listing URLs
 
@@ -43,7 +43,8 @@
 | `stockme-favicon.png` | Favicon / small logo | Same as app icon |
 | `../brand/stockme-mark.svg` | Site mark (icon only) | Colored cube, transparent |
 | `../brand/stockme-logo.svg` | Site logo (icon + Stockme) | Transparent SVG |
-| `stockme-feature-graphic.png` | Feature / gallery hero | 16:9 |
+| `stockme-feature-graphic.png` | **Feature media / gallery hero** (1600×900) | App card hero: “Always know when to reorder.” |
+| `stockme-feature-card.png` | Source feature card (same art, original export) | Keep as master; graphic is the upload |
 | `stockme-desktop-1-inventory.png` | **Desktop screenshot 1** | **1600×900** |
 | `stockme-desktop-2-purchase-orders.png` | **Desktop screenshot 2** | **1600×900** |
 | `stockme-desktop-3-scan-receive.png` | **Desktop screenshot 3** | **1600×900** |
@@ -70,14 +71,19 @@ Optional 4th: `stockme-desktop-4-pricing.png` — alt: `Starter Growth and Pro b
 
 ## Listing copy (paste)
 
-**Tagline** (≤100 chars)  
-Stocky’s replacement for Shopify inventory, POs, and stock takes.
+**App card subtitle** (sentence — not a keyword list; ≤100 chars)  
+```
+Manage inventory, purchase orders, and low-stock alerts in one Shopify app.
+```
+
+**Tagline / intro headline** (optional, feature media)  
+Always know when to reorder.
 
 **App name**  
 Stockme
 
 **Introduction**  
-Stockme is built for Shopify POS Pro merchants who need a Stocky replacement before August 31, 2026. Sync inventory across locations, create purchase orders from forecasts, receive with barcodes, run stock takes and transfers, and import Stocky CSVs — billed on your Shopify invoice from $15/month with a 14-day trial.
+Stockme is the all-in-one inventory management app for Shopify merchants who need accurate stock, smarter reordering, and cleaner purchase workflows. Use sales history to forecast demand, create purchase orders in a few clicks, manage suppliers, run stock takes and transfers, and keep inventory synced with Shopify — with low-stock alerts by email so you reorder before you sell out. From $15/month with a 14-day trial on your Shopify invoice.
 
 **Feature list**
 - Inventory sync with min/max levels and low-stock alerts  

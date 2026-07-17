@@ -33,11 +33,12 @@ export async function POST(request: NextRequest) {
     });
   } catch (err) {
     console.error("Webhook validation error:", err);
-    return NextResponse.json({ error: "Invalid webhook" }, { status: 401 });
+    // App Store automated checks expect 400 (not 401) on invalid HMAC.
+    return NextResponse.json({ error: "Invalid webhook" }, { status: 400 });
   }
 
   if (!validation.valid) {
-    return NextResponse.json({ error: "Invalid webhook" }, { status: 401 });
+    return NextResponse.json({ error: "Invalid webhook" }, { status: 400 });
   }
 
   if (topic === "shop/redact") {
