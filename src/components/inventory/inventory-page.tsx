@@ -250,9 +250,9 @@ export function InventoryPageClient() {
       let res = await authFetch(`/api/sync/force?${params.toString()}`, {
         method: "POST",
       });
-      let data = await res.json();
+      let data = await res.json().catch(() => ({} as { error?: string; message?: string; hasMore?: boolean }));
       if (!res.ok) {
-        setError(data.error ?? "Sync failed");
+        setError(data.error ?? `Sync failed (${res.status})`);
         return;
       }
 
@@ -263,9 +263,9 @@ export function InventoryPageClient() {
         const cont = new URLSearchParams(params);
         cont.set("continue", "1");
         res = await authFetch(`/api/sync/force?${cont.toString()}`, { method: "POST" });
-        data = await res.json();
+        data = await res.json().catch(() => ({} as { error?: string; message?: string; hasMore?: boolean }));
         if (!res.ok) {
-          setError(data.error ?? "Sync failed");
+          setError(data.error ?? `Sync failed (${res.status})`);
           return;
         }
         guard += 1;
@@ -274,8 +274,8 @@ export function InventoryPageClient() {
       setSyncMessage(data.message ?? "Sync complete");
       await loadMeta();
       await loadItems(pagination.page);
-    } catch {
-      setError("Sync failed");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Sync failed");
     } finally {
       setSyncing(false);
     }
@@ -397,7 +397,14 @@ export function InventoryPageClient() {
     }
   };
 
-  const rowMarkup = items.map((item, index) => (
+  const rowMarkup = items.map((item, index) => {
+    const stockKey =
+      item.available <= 0
+        ? "out"
+        : item.min_stock > 0 && item.available < item.min_stock
+          ? "low"
+          : "ok";
+    return (
     <IndexTable.Row
       id={item.variant_id}
       key={item.variant_id}
@@ -409,26 +416,28 @@ export function InventoryPageClient() {
           <Text as="span" variant="bodyMd" fontWeight="semibold">
             {item.product_title}
           </Text>
-          {item.variant_title !== "Default Title" && (
-            <Text as="span" tone="subdued" variant="bodySm">
-              {item.variant_title}
-            </Text>
-          )}
+          <Text as="span" tone="subdued" variant="bodySm">
+            {item.variant_title !== "Default Title" ? item.variant_title : "Default variant"}
+          </Text>
         </BlockStack>
       </IndexTable.Cell>
-      <IndexTable.Cell>{item.sku ?? "—"}</IndexTable.Cell>
-      <IndexTable.Cell>{item.barcode ?? "—"}</IndexTable.Cell>
       <IndexTable.Cell>
-        <StatusBadge
-          status={
-            item.available <= 0
-              ? "out"
-              : item.min_stock > 0 && item.available < item.min_stock
-                ? "low"
-                : "ok"
-          }
-          label={String(item.available)}
-        />
+        <Text as="span" variant="bodyMd">
+          {item.sku ?? "—"}
+        </Text>
+      </IndexTable.Cell>
+      <IndexTable.Cell>
+        <Text as="span" variant="bodyMd" fontWeight={item.barcode ? "semibold" : undefined}>
+          {item.barcode ?? "—"}
+        </Text>
+      </IndexTable.Cell>
+      <IndexTable.Cell>
+        <Text as="span" variant="bodyMd" fontWeight="semibold">
+          {item.available}
+        </Text>
+      </IndexTable.Cell>
+      <IndexTable.Cell>
+        <StatusBadge status={stockKey} />
       </IndexTable.Cell>
       <IndexTable.Cell>
         <InlineEditCell
@@ -449,7 +458,8 @@ export function InventoryPageClient() {
       </IndexTable.Cell>
       <IndexTable.Cell>{item.vendor ?? "—"}</IndexTable.Cell>
     </IndexTable.Row>
-  ));
+    );
+  });
 
   const filters = [
     {
@@ -495,6 +505,15 @@ export function InventoryPageClient() {
         loading: syncing,
       }}
       secondaryActions={[
+        ...(viewMode === "location" && selectionCount > 0
+          ? [
+              {
+                content: barcodeBusy ? "Generating…" : "Generate barcodes",
+                onAction: () => void assignBarcodes(),
+                loading: barcodeBusy,
+              },
+            ]
+          : []),
         {
           content: "Export CSV",
           url:
@@ -504,7 +523,7 @@ export function InventoryPageClient() {
           disabled: !locationId,
         },
       ]}
-      subtitle={`Last synced: ${formatSyncedAt(meta?.store.lastSyncedAt ?? null)}`}
+      subtitle="Track stock levels, availability, and min stock alerts."
     >
       <BlockStack gap="400">
         {error && (
@@ -527,7 +546,14 @@ export function InventoryPageClient() {
         )}
 
         <Card>
-          <InlineStack gap="300" wrap>
+          <BlockStack gap="200">
+            <Text as="p" tone="subdued" variant="bodySm">
+              Last synced: {formatSyncedAt(meta?.store.lastSyncedAt ?? null)}
+              {selectionCount > 0 && viewMode === "location"
+                ? ` · ${selectionCount} selected — use Generate barcodes in the page actions`
+                : ""}
+            </Text>
+            <InlineStack gap="300" wrap>
             <Box minWidth="200px">
               <Select
                 label="View"
@@ -576,6 +602,7 @@ export function InventoryPageClient() {
               </Box>
             )}
           </InlineStack>
+          </BlockStack>
         </Card>
 
         <Card padding="0">
@@ -645,6 +672,7 @@ export function InventoryPageClient() {
                     { title: "SKU" },
                     { title: "Barcode" },
                     { title: "Available" },
+                    { title: "Status" },
                     { title: "Min" },
                     { title: "Max" },
                     { title: "Vendor" },

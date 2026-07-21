@@ -64,7 +64,12 @@ export async function POST(request: NextRequest) {
     const result = await queueOrRunFullSync(shop, store.id, true);
     return NextResponse.json({ ok: true, ...result });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Sync failed";
+    const message =
+      err instanceof Error
+        ? err.message
+        : typeof err === "object" && err && "message" in err
+          ? String((err as { message: unknown }).message)
+          : "Sync failed";
     console.error("Force sync failed:", err);
     return NextResponse.json({ error: message }, { status: 500 });
   }

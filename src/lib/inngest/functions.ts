@@ -116,7 +116,9 @@ export const runFullSync = inngest.createFunction(
       return data;
     });
 
-    if (store.billing_status !== "active" && !billingBypassEnabled()) {
+    // Force syncs (install / manual) should still run even if the subscription
+    // webhook hasn't flipped billing_status yet — App Store review depends on it.
+    if (!force && store.billing_status !== "active" && !billingBypassEnabled()) {
       await step.run("skip-unbilled", async () => {
         await supabase.from("sync_runs").insert({
           shop_id: store.id,

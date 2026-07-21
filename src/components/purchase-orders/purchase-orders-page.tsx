@@ -23,7 +23,6 @@ import { FORECAST_METHODS, PLAN_TIERS } from "@/lib/constants";
 import { downloadPurchaseOrderPdf } from "@/lib/export/po-pdf";
 import { apiUrl, useShop, shopFetch } from "@/lib/hooks/use-shop";
 import { usePlanFeatures } from "@/lib/hooks/use-plan";
-import { UpgradeBanner } from "@/components/upgrade-banner";
 import { BarcodeScanner } from "@/components/barcode-scanner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 
@@ -369,12 +368,28 @@ export function PurchaseOrdersPageClient() {
         {
           content: "Force resync",
           onAction: async () => {
-            const res = await shopFetch("/api/sync/force", shop, { method: "POST" });
-            if (!res.ok) {
-              const data = await res.json().catch(() => ({}));
-              setError(data.error ?? "Sync failed");
-            } else {
+            try {
+              let res = await shopFetch("/api/sync/force", shop, { method: "POST" });
+              let data = await res.json().catch(() => ({} as { error?: string; hasMore?: boolean }));
+              if (!res.ok) {
+                setError(data.error ?? `Sync failed (${res.status})`);
+                return;
+              }
+              let guard = 0;
+              while (data.hasMore && guard < 500) {
+                res = await shopFetch("/api/sync/force?continue=1", shop, {
+                  method: "POST",
+                });
+                data = await res.json().catch(() => ({} as { error?: string; hasMore?: boolean }));
+                if (!res.ok) {
+                  setError(data.error ?? `Sync failed (${res.status})`);
+                  return;
+                }
+                guard += 1;
+              }
               load();
+            } catch (err) {
+              setError(err instanceof Error ? err.message : "Sync failed");
             }
           },
         },
@@ -382,13 +397,6 @@ export function PurchaseOrdersPageClient() {
     >
       <BlockStack gap="400">
         {error && <Banner tone="critical" onDismiss={() => setError(null)}>{error}</Banner>}
-        {!plan.loading && !plan.canScanReceive && (
-          <UpgradeBanner
-            planTier={plan.planTier}
-            feature="Barcode scan-to-receive"
-            shop={shop}
-          />
-        )}
         <Card padding="0">
           <IndexTable
             resourceName={{ singular: "PO", plural: "POs" }}
@@ -527,23 +535,35 @@ export function PurchaseOrdersPageClient() {
                 Invoice capture is available on the {PLAN_TIERS.pro.name} plan.
               </Banner>
             )}
+            <Text as="p" tone="subdued">
+              Point the camera at a product barcode, or enter quantities below. Each scan adds the
+              scan quantity to the matching line.
+            </Text>
             <TextField label="Scan quantity" type="number" value={scanQty} onChange={setScanQty} autoComplete="off" />
-            {plan.canScanReceive && (
-              <BarcodeScanner elementId="po-receive-scanner" onScan={handleScanReceive} />
-            )}
+            <BarcodeScanner elementId="po-receive-scanner" onScan={handleScanReceive} />
             {lastScan && <Banner tone="success">{lastScan}</Banner>}
             <FormLayout>
               {(selectedPo?.po_line_items ?? []).map((line) => {
                 const v = Array.isArray(line.variants) ? line.variants[0] : line.variants;
+                const remaining = Math.max(0, line.ordered_qty - line.received_qty);
+                const lineDone = remaining === 0 && line.ordered_qty > 0;
                 return (
-                  <TextField
-                    key={line.id}
-                    label={`${v?.sku ?? v?.title} (ordered ${line.ordered_qty}, received ${line.received_qty})`}
-                    type="number"
-                    value={receiveQtys[line.id] ?? ""}
-                    onChange={(val) => setReceiveQtys({ ...receiveQtys, [line.id]: val })}
-                    autoComplete="off"
-                  />
+                  <InlineStack key={line.id} gap="300" blockAlign="center" wrap={false}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <TextField
+                        label={`${v?.title ?? v?.sku ?? "Line"} · ordered ${line.ordered_qty}, received ${line.received_qty}, remaining ${remaining}`}
+                        type="number"
+                        value={receiveQtys[line.id] ?? ""}
+                        onChange={(val) => setReceiveQtys({ ...receiveQtys, [line.id]: val })}
+                        autoComplete="off"
+                        disabled={remaining === 0}
+                      />
+                    </div>
+                    <StatusBadge
+                      status={lineDone ? "completed" : line.received_qty > 0 ? "partially_received" : "pending"}
+                      label={lineDone ? "Complete" : line.received_qty > 0 ? "Partial" : "Incomplete"}
+                    />
+                  </InlineStack>
                 );
               })}
             </FormLayout>

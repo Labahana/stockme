@@ -25,7 +25,12 @@ type CostsResult = {
   product: {
     variants: {
       pageInfo: { hasNextPage: boolean; endCursor: string | null };
-      edges: { node: { id: string; inventoryItem: { unitCost: { amount: string } | null } } }[];
+      edges: {
+        node: {
+          id: string;
+          inventoryItem: { unitCost: { amount: string } | null } | null;
+        };
+      }[];
     };
   } | null;
 };
@@ -50,7 +55,7 @@ export async function syncProductVariantCosts(
     if (!data.product) break;
 
     for (const { node } of data.product.variants.edges) {
-      const cost = node.inventoryItem.unitCost?.amount
+      const cost = node.inventoryItem?.unitCost?.amount
         ? Number(node.inventoryItem.unitCost.amount)
         : null;
       const shopifyVariantId = parseShopifyGid(node.id);

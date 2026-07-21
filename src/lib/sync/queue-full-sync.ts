@@ -21,15 +21,16 @@ function hasInngestEventKey() {
 }
 
 /**
- * Prefer Inngest when configured. Otherwise run chunked sync steps that fit
- * Vercel Hobby's ~10s timeout (client continues until hasMore is false).
+ * Interactive force sync always runs chunked steps inline so the Admin UI gets
+ * real progress/errors (App Store reviewers click Sync and must see products).
+ * Background/non-force jobs may queue to Inngest when configured.
  */
 export async function queueOrRunFullSync(
   shop: string,
   shopId: string,
   force = true,
 ): Promise<QueueFullSyncResult> {
-  if (hasInngestEventKey()) {
+  if (!force && hasInngestEventKey()) {
     await inngest.send({
       name: "shopify/sync.full",
       data: { shop, force },

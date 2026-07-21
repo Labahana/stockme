@@ -28,8 +28,7 @@ type VariantNode = {
   inventoryItem: {
     id: string;
     tracked: boolean;
-    unitCost: { amount: string } | null;
-  };
+  } | null;
 };
 
 type VariantsPage = {
@@ -63,7 +62,7 @@ type LocationsQueryResult = {
 };
 
 type ProductVariantsQueryResult = {
-  product: { variants: VariantsPage };
+  product: { variants: VariantsPage } | null;
 };
 
 const LOCATIONS_QUERY = `
@@ -79,6 +78,8 @@ const LOCATIONS_QUERY = `
 
 // Keep nested page sizes small — Shopify caps a single query at cost 1000.
 // 25×100 variants + inventoryItem/unitCost was ~2672 and failed force sync.
+// Omit unitCost here: granular "View product costs" can ACCESS_DENIED the whole
+// query for some review shops; costs sync separately via variant-costs / webhooks.
 const PRODUCTS_PAGE_SIZE = 5;
 const VARIANTS_PAGE_SIZE = 25;
 
@@ -107,7 +108,6 @@ const PRODUCTS_QUERY = `
                 inventoryItem {
                   id
                   tracked
-                  unitCost { amount }
                 }
               }
             }
@@ -133,7 +133,6 @@ const PRODUCT_VARIANTS_QUERY = `
             inventoryItem {
               id
               tracked
-              unitCost { amount }
             }
           }
         }
@@ -178,7 +177,7 @@ type VariantInventoryQueryResult = {
         };
       }[];
     };
-  };
+  } | null;
 };
 
 function qtyNamed(
@@ -433,6 +432,7 @@ async function syncProduct(
         cursor: variantCursor,
       },
     );
+    if (!next.product?.variants) break;
     variantsPage = next.product.variants;
   }
 }
@@ -446,7 +446,10 @@ async function syncVariant(
   locationMap: Map<number, string>,
 ) {
   const shopifyVariantId = parseShopifyGid(variant.id);
-  const inventoryItemId = parseShopifyGid(variant.inventoryItem.id);
+  const inventoryItem = variant.inventoryItem;
+  const inventoryItemId = inventoryItem?.id
+    ? parseShopifyGid(inventoryItem.id)
+    : null;
 
   const { data: variantRow, error: variantError } = await supabase
     .from("variants")
@@ -460,10 +463,7 @@ async function syncVariant(
         sku: variant.sku,
         barcode: variant.barcode,
         price: variant.price ? Number(variant.price) : null,
-        cost: variant.inventoryItem.unitCost?.amount
-          ? Number(variant.inventoryItem.unitCost.amount)
-          : null,
-        tracked: variant.inventoryItem.tracked,
+        tracked: inventoryItem?.tracked ?? false,
       },
       { onConflict: "shop_id,shopify_variant_id" },
     )
@@ -472,12 +472,14 @@ async function syncVariant(
 
   if (variantError) throw variantError;
 
+  if (!inventoryItem?.id) return 0;
+
   return syncInventoryLevels(
     client,
     supabase,
     shopId,
     variantRow.id,
-    variant.inventoryItem.id,
+    inventoryItem.id,
     locationMap,
   );
 }
@@ -499,6 +501,8 @@ async function syncInventoryLevels(
       VARIANT_INVENTORY_QUERY,
       { itemId: inventoryItemGid, cursor },
     );
+
+    if (!data.inventoryItem) break;
 
     const rows = data.inventoryItem.inventoryLevels.edges
       .map(({ node }) => {

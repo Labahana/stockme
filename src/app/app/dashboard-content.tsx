@@ -168,9 +168,9 @@ export default function DashboardContent() {
     setSyncMessage(null);
     try {
       let res = await shopFetch("/api/sync/force", shop, { method: "POST" });
-      let data = await res.json();
+      let data = await res.json().catch(() => ({} as { error?: string; message?: string; hasMore?: boolean }));
       if (!res.ok) {
-        setError(data.error ?? "Sync failed");
+        setError(data.error ?? `Sync failed (${res.status})`);
         return;
       }
       let guard = 0;
@@ -179,17 +179,17 @@ export default function DashboardContent() {
         res = await shopFetch("/api/sync/force?continue=1", shop, {
           method: "POST",
         });
-        data = await res.json();
+        data = await res.json().catch(() => ({} as { error?: string; message?: string; hasMore?: boolean }));
         if (!res.ok) {
-          setError(data.error ?? "Sync failed");
+          setError(data.error ?? `Sync failed (${res.status})`);
           return;
         }
         guard += 1;
       }
       setSyncMessage(data.message ?? "Sync complete");
       await loadStatus();
-    } catch {
-      setError("Sync failed");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Sync failed");
     } finally {
       setSyncing(false);
     }

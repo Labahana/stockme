@@ -50,9 +50,29 @@ export default function OnboardingPageClient() {
 
   const sync = async () => {
     setSyncing(true);
+    setError(null);
     try {
-      await shopFetch("/api/sync/force", shop, host, { method: "POST" });
+      let res = await shopFetch("/api/sync/force", shop, host, { method: "POST" });
+      let data = await res.json().catch(() => ({} as { error?: string; hasMore?: boolean }));
+      if (!res.ok) {
+        setError(data.error ?? `Sync failed (${res.status})`);
+        return;
+      }
+      let guard = 0;
+      while (data.hasMore && guard < 500) {
+        res = await shopFetch("/api/sync/force?continue=1", shop, host, {
+          method: "POST",
+        });
+        data = await res.json().catch(() => ({} as { error?: string; hasMore?: boolean }));
+        if (!res.ok) {
+          setError(data.error ?? `Sync failed (${res.status})`);
+          return;
+        }
+        guard += 1;
+      }
       setStats((s) => ({ ...s, synced: true }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Sync failed");
     } finally {
       setSyncing(false);
     }
@@ -127,6 +147,11 @@ export default function OnboardingPageClient() {
                       </List.Item>
                     </List>
                   </Banner>
+                  {error && (
+                    <Banner tone="critical" onDismiss={() => setError(null)}>
+                      {error}
+                    </Banner>
+                  )}
                   {!stats.synced && (
                     <Button fullWidth onClick={sync} loading={syncing}>
                       Sync catalog now
