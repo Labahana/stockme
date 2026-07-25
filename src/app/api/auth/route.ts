@@ -17,12 +17,25 @@ export async function GET(request: NextRequest) {
     const shop = sanitizeShop(shopParam);
 
     if (!shop) {
-      return NextResponse.json({ error: "Invalid shop parameter" }, { status: 400 });
+      // Prefer HTML over JSON 400 — bare App URL probes should not look "broken".
+      const html = `<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8" /><title>Stockme</title></head>
+<body style="font-family:system-ui;padding:2rem;max-width:36rem;margin:2rem auto">
+  <h1>Stockme</h1>
+  <p>Open this app from your Shopify Admin to install or launch it for a store.</p>
+</body></html>`;
+      return new NextResponse(html, {
+        status: 200,
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+      });
     }
 
     const session = await loadOfflineSession(shop);
     if (session?.accessToken && !isLegacyNonExpiringSession(session)) {
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ??
+      // App URL is loaded inside the Admin iframe. Stay same-origin so we do
+      // not navigate the iframe to admin.shopify.com (often refuses framing).
+      const appUrl =
+        process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ??
         "https://stockme.gentletap.co";
       const params = new URLSearchParams({ shop });
       if (host) params.set("host", host);
@@ -34,7 +47,17 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("OAuth begin error:", error);
     const message = error instanceof Error ? error.message : "OAuth begin failed";
-    return NextResponse.json({ error: message }, { status: 500 });
+    const html = `<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8" /><title>Stockme</title></head>
+<body style="font-family:system-ui;padding:2rem;max-width:36rem;margin:2rem auto">
+  <h1>Could not start Stockme install</h1>
+  <p>${message.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</p>
+  <p>Return to Shopify Admin and open Stockme again.</p>
+</body></html>`;
+    return new NextResponse(html, {
+      status: 200,
+      headers: { "Content-Type": "text/html; charset=utf-8" },
+    });
   }
 }
 

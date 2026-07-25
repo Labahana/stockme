@@ -24,8 +24,10 @@ api_version = "2026-07"
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
 scopes = "write_inventory,read_inventory,read_locations,read_orders,read_products,write_products"
 optional_scopes = [ ]
-# Required false so app-specific compliance webhooks can be deployed (App Store automated checks).
-use_legacy_install_flow = false
+# Must be true: Stockme uses custom authorization-code OAuth (/api/auth + callback).
+# With false (managed install), Shopify skips the callback and App URL kicks off a
+# second OAuth — App Store reviewers then see a broken UI after install (2.1.3).
+use_legacy_install_flow = true
 
 [auth]
 redirect_urls = [ "https://stockme.gentletap.co/api/auth/callback" ]

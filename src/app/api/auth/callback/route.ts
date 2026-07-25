@@ -2,18 +2,75 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   ensureStoreRecord,
   registerWebhooks,
-  shopify,
   storeSession,
 } from "@/lib/shopify";
 import { syncStoreBilling } from "@/lib/billing/plans";
 import { completeOfflineOAuth } from "@/lib/shopify/oauth";
+import { postInstallAdminUrl } from "@/lib/shopify/post-install-redirect";
 import { inngest } from "@/lib/inngest/client";
 import { BILLING_DISABLED_FOR_DEMO } from "@/lib/constants";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { sanitizeShop } from "@/lib/shopify";
 
 export const dynamic = "force-dynamic";
 
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/** Never return JSON 500 after OAuth — App Store treats that as a failed UI (2.1.3). */
+function oauthErrorPage(shop: string | null, message: string) {
+  const appUrl =
+    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ??
+    "https://stockme.gentletap.co";
+  const retry = shop
+    ? `${appUrl}/api/auth?shop=${encodeURIComponent(shop)}`
+    : appUrl;
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Stockme — Install interrupted</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 36rem; margin: 3rem auto; padding: 0 1.25rem; color: #202223; line-height: 1.5; }
+    a.button { display: inline-block; margin-top: 1rem; background: #008060; color: #fff; text-decoration: none; padding: 0.75rem 1.25rem; border-radius: 8px; font-weight: 600; }
+    .detail { color: #6d7175; font-size: 0.95rem; }
+  </style>
+</head>
+<body>
+  <h1>Stockme install interrupted</h1>
+  <p>Something went wrong finishing the connection to your Shopify store. This is usually fixed by trying install once more from Admin.</p>
+  <p class="detail">${escapeHtml(message)}</p>
+  <p><a class="button" href="${escapeHtml(retry)}">Try installing again</a></p>
+</body>
+</html>`;
+
+  return new NextResponse(html, {
+    status: 200,
+    headers: { "Content-Type": "text/html; charset=utf-8" },
+  });
+}
+
 export async function GET(request: NextRequest) {
+  const shopHint = sanitizeShop(request.nextUrl.searchParams.get("shop"));
+
+  // Automated probes / bare callback hits must not return 500 JSON.
+  if (
+    !request.nextUrl.searchParams.get("code") ||
+    !request.nextUrl.searchParams.get("state")
+  ) {
+    return oauthErrorPage(
+      shopHint,
+      "Missing OAuth code/state. Open Stockme from Shopify Admin to install.",
+    );
+  }
+
   try {
     const { session, shop } = await completeOfflineOAuth(request.nextUrl.searchParams);
 
@@ -59,18 +116,13 @@ export async function GET(request: NextRequest) {
     }
 
     const host = request.nextUrl.searchParams.get("host");
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://stockme.gentletap.co";
-    // DEMO: skip billing=required redirect — go straight into the app
-    const redirectUrl = host
-      ? await shopify.auth.buildEmbeddedAppUrl(host)
-      : BILLING_DISABLED_FOR_DEMO
-        ? `${appUrl}/app?shop=${encodeURIComponent(shop)}`
-        : `${appUrl}/app/settings?shop=${encodeURIComponent(shop)}&billing=required`;
-
+    // Always re-enter Admin embedded UI. BillingGuard will send unpaid shops
+    // to Settings once App Bridge session tokens work inside the iframe.
+    const redirectUrl = await postInstallAdminUrl(shop, host);
     return NextResponse.redirect(redirectUrl);
   } catch (error) {
     console.error("OAuth callback error:", error);
     const message = error instanceof Error ? error.message : "OAuth callback failed";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return oauthErrorPage(shopHint, message);
   }
 }
