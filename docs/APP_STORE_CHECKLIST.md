@@ -53,7 +53,8 @@ SUPABASE_* / INNGEST_* / RESEND_* / CRON_SECRET
 - **Webhooks / GDPR:** `https://stockme.gentletap.co/api/webhooks` — declare in `shopify.app.toml` and run `shopify app deploy`
 - **Website:** `https://stockme.gentletap.co/`
 - **Embedded:** Yes
-- **Use legacy install flow:** Yes (custom OAuth)
+- **Use legacy install flow:** No (managed install + session-token exchange)
+- **Allowed redirection URL:** `https://stockme.gentletap.co/api/auth/callback` (reconnect fallback)
 
 ## Pre-submit smoke test
 

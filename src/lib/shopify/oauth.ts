@@ -184,6 +184,37 @@ async function exchangeCodeForToken(shop: string, code: string) {
   );
 }
 
+/**
+ * Managed install path: exchange App Bridge session / ID token for an expiring
+ * offline access token (no authorization-code redirect).
+ * https://shopify.dev/docs/apps/build/authentication-authorization/access-tokens/token-exchange
+ */
+export async function exchangeSessionTokenForOffline(
+  shop: string,
+  sessionToken: string,
+): Promise<Session> {
+  if (!apiKey() || !apiSecret()) {
+    throw new Error("Missing SHOPIFY_API_KEY / SHOPIFY_API_SECRET");
+  }
+
+  const token = await postAccessToken(
+    shop,
+    {
+      client_id: apiKey(),
+      client_secret: apiSecret(),
+      grant_type: "urn:ietf:params:oauth:grant-type:token-exchange",
+      subject_token: sessionToken,
+      subject_token_type: "urn:ietf:params:oauth:token-type:id_token",
+      requested_token_type:
+        "urn:shopify:params:oauth:token-type:offline-access-token",
+      expiring: "1",
+    },
+    "Session token exchange failed",
+  );
+  assertExpiringToken(token, "Session token exchange");
+  return sessionFromTokenResponse(shop, "token-exchange", token);
+}
+
 function sessionFromTokenResponse(
   shop: string,
   state: string,
